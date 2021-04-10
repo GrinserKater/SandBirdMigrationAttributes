@@ -1,0 +1,49 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30907.101
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SandBirdMigrationAttributes", "SandBirdMigrationAttributes\SandBirdMigrationAttributes.csproj", "{7E935FB0-E76B-4792-AE5A-4AB0339549BB}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TwilioHttpClient", "TwilioHttpClient\TwilioHttpClient.csproj", "{90469018-995B-4E8B-9BD8-0CB9937C7502}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SendbirdHttpClient", "SendbirdHttpClient\SendbirdHttpClient.csproj", "{6D7B3D98-BE37-4940-8350-43294B710C1F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Common", "Common\Common.csproj", "{35C97A13-8FB8-4722-BB0E-6899EA103D9B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TheGrandMigrator", "TheGrandMigrator\TheGrandMigrator.csproj", "{4CBB287D-DC95-4706-8794-C76D4C12AF12}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7E935FB0-E76B-4792-AE5A-4AB0339549BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E935FB0-E76B-4792-AE5A-4AB0339549BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E935FB0-E76B-4792-AE5A-4AB0339549BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E935FB0-E76B-4792-AE5A-4AB0339549BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90469018-995B-4E8B-9BD8-0CB9937C7502}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90469018-995B-4E8B-9BD8-0CB9937C7502}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90469018-995B-4E8B-9BD8-0CB9937C7502}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90469018-995B-4E8B-9BD8-0CB9937C7502}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6D7B3D98-BE37-4940-8350-43294B710C1F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6D7B3D98-BE37-4940-8350-43294B710C1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6D7B3D98-BE37-4940-8350-43294B710C1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6D7B3D98-BE37-4940-8350-43294B710C1F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{35C97A13-8FB8-4722-BB0E-6899EA103D9B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35C97A13-8FB8-4722-BB0E-6899EA103D9B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35C97A13-8FB8-4722-BB0E-6899EA103D9B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35C97A13-8FB8-4722-BB0E-6899EA103D9B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4CBB287D-DC95-4706-8794-C76D4C12AF12}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4CBB287D-DC95-4706-8794-C76D4C12AF12}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4CBB287D-DC95-4706-8794-C76D4C12AF12}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4CBB287D-DC95-4706-8794-C76D4C12AF12}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0C1733CA-62CE-4CD8-899B-D3B76DCB9868}
+	EndGlobalSection
+EndGlobal

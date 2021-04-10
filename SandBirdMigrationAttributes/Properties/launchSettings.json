@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SandBirdMigrationAttributes": {
+      "commandName": "Project",
+      "commandLineArgs": "channels --pageSize 50 --limit 2 --logtofile"
+    }
+  }
+}
