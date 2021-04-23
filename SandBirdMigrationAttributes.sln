@@ -11,7 +11,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SendbirdHttpClient", "Sendb
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Common", "Common\Common.csproj", "{35C97A13-8FB8-4722-BB0E-6899EA103D9B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TheGrandMigrator", "TheGrandMigrator\TheGrandMigrator.csproj", "{4CBB287D-DC95-4706-8794-C76D4C12AF12}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TheGrandMigrator", "TheGrandMigrator\TheGrandMigrator.csproj", "{4CBB287D-DC95-4706-8794-C76D4C12AF12}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommandManager", "CommandManager\CommandManager.csproj", "{A23FA252-8B7E-4104-82B8-3E34538EE307}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{4CBB287D-DC95-4706-8794-C76D4C12AF12}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4CBB287D-DC95-4706-8794-C76D4C12AF12}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4CBB287D-DC95-4706-8794-C76D4C12AF12}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A23FA252-8B7E-4104-82B8-3E34538EE307}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A23FA252-8B7E-4104-82B8-3E34538EE307}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A23FA252-8B7E-4104-82B8-3E34538EE307}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A23FA252-8B7E-4104-82B8-3E34538EE307}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

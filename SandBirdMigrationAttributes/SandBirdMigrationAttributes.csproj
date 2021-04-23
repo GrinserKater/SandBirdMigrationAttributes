@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CommandManager\CommandManager.csproj" />
     <ProjectReference Include="..\SendbirdHttpClient\SendbirdHttpClient.csproj" />
     <ProjectReference Include="..\TheGrandMigrator\TheGrandMigrator.csproj" />
     <ProjectReference Include="..\TwilioHttpClient\TwilioHttpClient.csproj" />

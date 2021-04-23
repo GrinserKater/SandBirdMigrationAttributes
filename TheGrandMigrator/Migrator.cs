@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -20,8 +21,11 @@ namespace TheGrandMigrator
 {
 	public class Migrator : IMigrator
 	{
+		private readonly string _successLogFileName = $"successfull_entities_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.log";
+		private readonly string _failedLogFileName = $"failed_entities_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.log";
 		private readonly ITwilioHttpClient _twilioClient;
 		private readonly ISendbirdHttpClient _sendbirdClient;
+
 		public Migrator(ITwilioHttpClient twilioClient, ISendbirdHttpClient sendbirdClient)
 		{
 			_twilioClient   = twilioClient ?? throw new ArgumentNullException(nameof(twilioClient));
@@ -51,10 +55,11 @@ namespace TheGrandMigrator
 				result.EntitiesFetched.Add(user);
 
 				if (user.Attributes == null ||
-				    user.Attributes.BlockedByAdminAt == null &&
-				    (user.Attributes.BlockedUsers == null || user.Attributes.BlockedUsers.Length == 0))
+					user.Attributes.BlockedByAdminAt == null &&
+					(user.Attributes.BlockedUsers == null || user.Attributes.BlockedUsers.Length == 0))
 				{
 					Trace.WriteLine($"User {user.FriendlyName} with ID {user.Id} contained no attributes to migrate.");
+					result.EntitiesSucceeded.Add(user);
 					continue;
 				}
 
@@ -62,8 +67,8 @@ namespace TheGrandMigrator
 
 				var userUpsertRequestBody = new UserUpsertRequest
 				{
-					Nickname          = user.FriendlyName,
-					Metadata          = new UserMetadata(),
+					Nickname = user.FriendlyName,
+					Metadata = new UserMetadata(),
 					IssueSessionToken = true
 				};
 
@@ -107,12 +112,13 @@ namespace TheGrandMigrator
 				result.EntitiesSucceeded.Add(user);
 			}
 
-			if(result.FailedCount > 0)
+			if (result.FailedCount > 0)
 				result.Message =
 					$"Not all users' attributes migrated successfully. {result.FailedCount} failed, {result.SuccessCount} succeeded. See ErrorMessages for details.";
 
-			result.Message = $"Migration finished. Totally migrated {result.SuccessCount} users' attributes.";
+			WriteMigrationResultLogFiles(result);
 
+			result.Message = $"Migration finished. Totally migrated {result.SuccessCount} users' attributes.";
 			return result;
 		}
 
@@ -136,7 +142,7 @@ namespace TheGrandMigrator
 				return result;
 			}
 
-			foreach(Channel channel in twilioChannelResult.Payload)
+			foreach (Channel channel in twilioChannelResult.Payload)
 			{
 				result.EntitiesFetched.Add(channel);
 
@@ -177,9 +183,23 @@ namespace TheGrandMigrator
 				result.Message =
 					$"Not all channels' attributes migrated successfully. {result.FailedCount} failed, {result.SuccessCount} succeeded. See ErrorMessages for details.";
 
-			result.Message = $"Migration finished. Totally migrated {result.SuccessCount} channels' attributes.";
+			WriteMigrationResultLogFiles(result);
 
+			result.Message = $"Migration finished. Totally migrated {result.SuccessCount} channels' attributes.";
 			return result;
+		}
+
+		private void WriteMigrationResultLogFiles<T>(MigrationResult<T> result)
+        {
+			if(result.SuccessCount > 0)
+            {
+				File.WriteAllLines(_successLogFileName, result.EntitiesSucceeded.Select(e => e.ToString()).ToArray());
+			}
+
+			if(result.FailedCount > 0)
+            {
+				File.WriteAllLines(_failedLogFileName, result.EntitiesFailed.Select(e => e.ToString()).ToArray());
+            }
 		}
 	}
 }

@@ -8,5 +8,10 @@ namespace TwilioHttpClient.Models
 		public string FriendlyName { get; set; }
 
 		public ChannelAttributes Attributes { get; set; }
-	}
+
+        public override string ToString()
+        {
+            return UniqueName;
+        }
+    }
 }

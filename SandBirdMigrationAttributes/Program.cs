@@ -1,102 +1,55 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
-using SendbirdHttpClient.Extensions;
-using TwilioHttpClient.Extensions;
-using TheGrandMigrator;
 using TheGrandMigrator.Abstractions;
+using CommandManager;
+using CommandManager.Enums;
 
 namespace SandBirdMigrationAttributes
 {
     class Program
     {
-		private const int DefaultPageSize    = 100;
-		private const int MaxAllowedPageSize = 1000;
-		private const int DefaultLimit       = 50;
-
-		private const string PageSizeArgument        = "pagesize";
-		private const string LimitArgument           = "limit";
-		private const string AllArgument             = "all";
-		private const string LogToFileArgument       = "logtofile";
-		private const string MigrationSubjectUser    = "users";
-		private const string MigrationSubjectChannel = "channels";
-
-		private static readonly string UsageHint =
-			$"\tSandBirdMigrationAttributes --{MigrationSubjectUser} | --{MigrationSubjectChannel} [--{PageSizeArgument}] [--{LimitArgument} | --{AllArgument}] [--{LogToFileArgument}]";
-		
 		private static string _logFileName = $"Migration_{{0}}_log_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.txt";
+
 		public static async Task Main(string[] args)
         {
 	        Trace.Listeners.Add(new TextWriterTraceListener(Console.Out));
 
-			if (args.Length == 0)
+			var options = Manager.Manage(args);
+
+			if (options.IsEmpty) return;
+
+			if (options.LogToFile)
 			{
-				Trace.WriteLine("No arguments were provided. Usage:");
-				Trace.WriteLine(UsageHint);
-				return;
-			}
-
-	        string[] arguments = args.Select(a => a.Trim('-').ToLower()).ToArray();
-
-			string migrationSubject = arguments.ElementAtOrDefault(Array.IndexOf(arguments, MigrationSubjectUser));
-			if(String.IsNullOrWhiteSpace(migrationSubject))
-				migrationSubject = arguments.ElementAtOrDefault(Array.IndexOf(arguments, MigrationSubjectChannel));
-
-			if (String.IsNullOrWhiteSpace(migrationSubject))
-			{
-				Trace.WriteLine("No migration subject was provided. Usage:");
-				Trace.WriteLine(UsageHint);
-				return;
-			}
-
-			int pageSize =
-				Int32.TryParse(arguments.ElementAtOrDefault(Array.IndexOf(arguments, PageSizeArgument) + 1), out int size) && size <= MaxAllowedPageSize ?
-				size :
-				DefaultPageSize;
-
-			int resourceLimit = Int32.TryParse(arguments.ElementAtOrDefault(Array.IndexOf(arguments, LimitArgument) + 1), out int limit) ? limit : DefaultLimit;
-
-			if(arguments.Contains(AllArgument)) resourceLimit = 0;
-
-			string logToFile = arguments.ElementAtOrDefault(Array.IndexOf(arguments, LogToFileArgument));
-
-			if (!String.IsNullOrWhiteSpace(logToFile))
-			{
-				_logFileName = String.Format(_logFileName, migrationSubject);
+				_logFileName = String.Format(_logFileName, options.MigrationSubject.ToString("G"));
 				Trace.Listeners.Add(new TextWriterTraceListener(System.IO.File.CreateText(_logFileName)));
 			}
 
 			try
 			{
-				ServiceProvider serviceProvider = new ServiceCollection()
-					.AddSendbirdHttpClient()
-					.AddTwilioClient()
-					.AddSingleton<IMigrator, Migrator>()
-					.BuildServiceProvider();
+				ServiceProvider serviceProvider = InversionOfControl.Setup();
 
 				IMigrator grandMigrator = serviceProvider.GetRequiredService<IMigrator>();
 
-				Trace.WriteLine($"Starting migrations of {migrationSubject} - {DateTime.Now.ToShortDateString()}.");
+				Trace.WriteLine($"Starting migrations of {options.MigrationSubject:G} - {DateTime.Now.ToShortDateString()}.");
 
 				var sw = new Stopwatch();
-
 				sw.Start();
 
 				IMigrationResult migrationResult;
 
-				switch (migrationSubject)
+				switch (options.MigrationSubject)
 				{
-					case MigrationSubjectUser:
-						migrationResult = await grandMigrator.MigrateUsersAttributesAsync(resourceLimit, pageSize);
+					case MigrationSubject.User:
+						migrationResult = await grandMigrator.MigrateUsersAttributesAsync(options.ResourceLimit, options.PageSize);
 						break;
-					case MigrationSubjectChannel:
-						migrationResult = await grandMigrator.MigrateChannelsAttributesAsync(resourceLimit, pageSize);
+					case MigrationSubject.Channel:
+						migrationResult = await grandMigrator.MigrateChannelsAttributesAsync(options.ResourceLimit, options.PageSize);
 						break;
 					default:
-						Trace.WriteLine($"Unsupported migration entity {migrationSubject}.");
+						Trace.WriteLine($"Unsupported migration entity {options.MigrationSubject:G}.");
 						return;
 				}
 
