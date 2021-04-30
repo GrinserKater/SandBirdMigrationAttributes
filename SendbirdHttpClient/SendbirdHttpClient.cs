@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -137,5 +138,19 @@ namespace SendbirdHttpClient
 		{
 			return await UpdateChannelFreezeStateAsync(url, isFrozen);
 		}
+
+		public async Task<HttpClientResult<int[]>> WhoIsAbsentAsync(int[] userIds)
+		{
+            if (userIds == null || userIds.Length == 0)
+                return new HttpClientResult<int[]>(HttpStatusCode.BadRequest, "SendbirdHttpClient.WhoDoesNotExistAsync: invalid input parameters.");
+
+			var fetchResult = await FetchUsersByIdsAsync(userIds);
+			if (!fetchResult.IsSuccess) return fetchResult.ShallowCopy<int[]>();
+
+			UserResource[] usersFound = fetchResult.Payload;
+			int[] payload = userIds.Where(id => usersFound.All(uf => uf.UserId != id.ToString())).ToArray();
+
+			return new HttpClientResult<int[]>(HttpStatusCode.OK, payload);
+        }
 	}
 }

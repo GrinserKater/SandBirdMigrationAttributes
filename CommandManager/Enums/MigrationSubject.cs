@@ -4,6 +4,7 @@
     {
         Undefined = 0,
         User = 1,
-        Channel = 2
+        Channel = 2,
+        Account = 3
     }
 }

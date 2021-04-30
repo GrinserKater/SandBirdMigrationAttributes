@@ -1,8 +1,9 @@
-﻿using TwilioHttpClient.Models.Attributes.User;
+﻿using TwilioHttpClient.Abstractions;
+using TwilioHttpClient.Models.Attributes.User;
 
 namespace TwilioHttpClient.Models
 {
-	public class User
+	public class User : IResource
 	{
 		public string Id { get; set; }
 		public string FriendlyName { get; set; }

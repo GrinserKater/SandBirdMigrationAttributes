@@ -1,15 +1,14 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Common.Json;
 using Common.Results;
 using SendbirdHttpClient.Constants;
 using SendbirdHttpClient.Http;
-using SendbirdHttpClient.Json;
 using SendbirdHttpClient.Models;
 using SendbirdHttpClient.Models.Channel;
 using SendbirdHttpClient.Models.Common;
@@ -153,7 +152,7 @@ namespace SendbirdHttpClient
 			_httpClient.DefaultRequestHeaders.Add("Api-Token", _options.SecondaryToken);
 		}
 
-		private async Task<HttpClientResult<T>> SendAsync<T, T1>(Uri requestUrl, HttpMethod method, T1 requestBody) where T : class, new()
+		private async Task<HttpClientResult<T>> SendAsync<T, T1>(Uri requestUrl, HttpMethod method, T1 requestBody) where T : class
 		{
 			using (var request = new HttpRequestMessage(method, requestUrl) {Content = new JsonContent(CustomJsonSerializer.Serialize(requestBody))})
 			using (HttpResponseMessage response = await _httpClient.SendAsync(request))
@@ -169,10 +168,15 @@ namespace SendbirdHttpClient
 			}
 		}
 
-		private async Task<HttpClientResult<T>> SendAsync<T, T1>(string requestUrl, HttpMethod method, T1 requestBody) where T : class, new()
+		private async Task<HttpClientResult<T>> SendAsync<T, T1>(string requestUrl, HttpMethod method, T1 requestBody) where T : class
 		{
 			return await SendAsync<T, T1>(new Uri(requestUrl, UriKind.Relative), method, requestBody);
 		}
+
+        private async Task<HttpClientResult<T>> SendAsync<T>(string requestUrl, HttpMethod method) where T : class
+        {
+            return await SendAsync<T, object>(new Uri(requestUrl, UriKind.Relative), method, null);
+        }
 
 		private async Task<HttpClientResult<ChannelResource>> UpdateChannelFreezeStateAsync(string url, bool isFrozen)
 		{
@@ -187,5 +191,16 @@ namespace SendbirdHttpClient
 
 			return result;
 		}
-	}
+
+        private async Task<HttpClientResult<UserResource[]>> FetchUsersByIdsAsync(int[] ids)
+        {
+            var userIdsAsString = String.Join(",", ids);
+
+			string requestUrl = $"{_restEndpoints[Api.Endpoints.Users]}?{Api.Parameters.UserIds}={userIdsAsString}";
+
+            HttpClientResult<UserResource[]> result = await SendAsync<UserResource[]>(requestUrl, HttpMethod.Get);
+
+            return result;
+        }
+    }
 }

@@ -22,5 +22,6 @@ namespace SendbirdHttpClient.Abstractions
 		Task<HttpClientResult<ChannelResource>> FreezeChannelAsync(string url);
 		Task<HttpClientResult<ChannelResource>> UnfreezeChannelAsync(string url);
 		Task<HttpClientResult<ChannelResource>> AlterChannelFreezeAsync(string url, bool isFrozen);
+		Task<HttpClientResult<int[]>> WhoIsAbsentAsync(int[] userIds);
 	}
 }

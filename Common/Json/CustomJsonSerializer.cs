@@ -3,11 +3,11 @@ using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
-namespace SendbirdHttpClient.Json
+namespace Common.Json
 {
 	public static class CustomJsonSerializer
 	{
-		public static T  DeserializeFromString<T>(string json) where T : class, new()
+		public static T  DeserializeFromString<T>(string json) where T : class
 		{
 			if(String.IsNullOrWhiteSpace(json)) return null;
 

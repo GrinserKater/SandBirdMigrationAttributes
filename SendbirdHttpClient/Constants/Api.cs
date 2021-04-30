@@ -14,5 +14,10 @@
 			public const string Metadata = "metadata";
 			public const string Freeze   = "freeze";
 		}
+
+        public static class Parameters
+        {
+			public const string UserIds = "user_ids";
+        }
 	}
 }

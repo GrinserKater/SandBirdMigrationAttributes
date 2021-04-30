@@ -6,7 +6,7 @@ using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace SendbirdHttpClient.JsonConverters
+namespace Common.Json.Converters
 {
 	public class LimitableEnumerableConverter<T> : JsonConverter<IEnumerable<T>>
 	{

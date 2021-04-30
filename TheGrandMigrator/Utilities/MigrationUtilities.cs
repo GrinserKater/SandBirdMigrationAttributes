@@ -81,32 +81,33 @@ namespace TheGrandMigrator.Utilities
 			Debug.WriteLine(message);
 		}
 
-		public static ChannelUpsertRequest BuildChannelUpsertRequestBody(Channel channel)
+		public static ChannelUpsertRequest BuildChannelUpsertRequestBody(Channel channel, Member[] channelMembers)
 		{
-			if(channel == null || channel.Attributes == null) return null;
+			if(channel?.Attributes == null) return null;
 
 			var channelUpsertRequest = new ChannelUpsertRequest
 			{
 				ChannelUrl = ConvertToChannelUrl(channel.UniqueName),
-				UserIds    = channel.UniqueName.Split('-').Skip(1).Take(2).Select(Int32.Parse).ToArray(),
-				CreatedBy  = channel.Attributes.BuyerId,
+                CreatedBy  = channel.Attributes.BuyerId,
 				Name       = channel.FriendlyName,
 				CoverUrl   = channel.Attributes.Listing?.MainPicture ?? String.Empty
 			};
 
+			channelUpsertRequest.UserIds = channelMembers != null ?
+				channelMembers.Select(cm => Int32.TryParse(cm.Id, out int id) ? id : 0).ToArray() :
+				channel.UniqueName.Split('-').Skip(1).Take(2).Select(Int32.Parse).ToArray();
 			channelUpsertRequest.Data = BuildChannelData(channel);
 
 			return channelUpsertRequest;
 		}
 
-		public static async Task<OperationResult> TryCreateOrUpdateChannelWithMetadata(ISendbirdHttpClient sendbirdClient, Channel channel,
+		public static async Task<OperationResult> TryCreateOrUpdateChannelWithMetadata(ISendbirdHttpClient sendbirdClient, Channel channel, Member[] channelMembers,
 			/* Mutable */ MigrationResult<Channel> result)
 		{
 			if(sendbirdClient == null) throw new ArgumentNullException(nameof(sendbirdClient));
+            if(channel == null || result == null) return OperationResult.Failure;
 
-			if(channel == null || result == null) return OperationResult.Failure;
-
-			ChannelUpsertRequest channelUpsertRequest = BuildChannelUpsertRequestBody(channel);
+            ChannelUpsertRequest channelUpsertRequest = BuildChannelUpsertRequestBody(channel, channelMembers);
 
 			HttpClientResult<ChannelResource> channelManipulationResult = await sendbirdClient.CreateChannelAsync(channelUpsertRequest);
 
