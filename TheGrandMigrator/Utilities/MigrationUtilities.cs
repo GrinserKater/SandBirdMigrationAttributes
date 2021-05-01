@@ -81,7 +81,7 @@ namespace TheGrandMigrator.Utilities
 			Debug.WriteLine(message);
 		}
 
-		public static ChannelUpsertRequest BuildChannelUpsertRequestBody(Channel channel, Member[] channelMembers)
+		public static ChannelUpsertRequest BuildChannelUpsertRequestBody(Channel channel, int[] channelMembersIds)
 		{
 			if(channel?.Attributes == null) return null;
 
@@ -93,21 +93,19 @@ namespace TheGrandMigrator.Utilities
 				CoverUrl   = channel.Attributes.Listing?.MainPicture ?? String.Empty
 			};
 
-			channelUpsertRequest.UserIds = channelMembers != null ?
-				channelMembers.Select(cm => Int32.TryParse(cm.Id, out int id) ? id : 0).ToArray() :
-				channel.UniqueName.Split('-').Skip(1).Take(2).Select(Int32.Parse).ToArray();
+			channelUpsertRequest.UserIds = channelMembersIds ?? Array.Empty<int>();
 			channelUpsertRequest.Data = BuildChannelData(channel);
 
 			return channelUpsertRequest;
 		}
 
-		public static async Task<OperationResult> TryCreateOrUpdateChannelWithMetadata(ISendbirdHttpClient sendbirdClient, Channel channel, Member[] channelMembers,
+		public static async Task<OperationResult> TryCreateOrUpdateChannelWithMetadata(ISendbirdHttpClient sendbirdClient, Channel channel, int[] channelMembersIds,
 			/* Mutable */ MigrationResult<Channel> result)
 		{
 			if(sendbirdClient == null) throw new ArgumentNullException(nameof(sendbirdClient));
             if(channel == null || result == null) return OperationResult.Failure;
 
-            ChannelUpsertRequest channelUpsertRequest = BuildChannelUpsertRequestBody(channel, channelMembers);
+            ChannelUpsertRequest channelUpsertRequest = BuildChannelUpsertRequestBody(channel, channelMembersIds);
 
 			HttpClientResult<ChannelResource> channelManipulationResult = await sendbirdClient.CreateChannelAsync(channelUpsertRequest);
 

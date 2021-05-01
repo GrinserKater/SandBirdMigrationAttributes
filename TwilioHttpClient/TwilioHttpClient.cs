@@ -13,6 +13,7 @@ using Twilio.Exceptions;
 using Twilio.Http;
 using Twilio.Rest.Chat.V2.Service;
 using Twilio.Rest.Chat.V2.Service.Channel;
+using Twilio.Rest.Chat.V2.Service.User;
 using TwilioHttpClient.Abstractions;
 using TwilioHttpClient.Models;
 using TwilioHttpClient.Models.Attributes.Channel;
@@ -24,11 +25,9 @@ namespace TwilioHttpClient
 {
 	public class TwilioHttpClient : ITwilioHttpClient
 	{
-		private const string ApiBaseUrl = "https://chat.twilio.com/v2";
 		private const int DefaultPageSize = 50;
 
 		private readonly string _chatServiceId;
-		private readonly TwilioOptions _options;
 		private readonly TwilioRestClient _twilioRestClient;
 
 		public TwilioHttpClient(HttpClient httpClient, Microsoft.Extensions.Options.IOptions<TwilioOptions> options)
@@ -36,18 +35,18 @@ namespace TwilioHttpClient
 			if (options == null) throw new ArgumentNullException(nameof(options));
 			if (httpClient == null) throw new ArgumentNullException(nameof(options));
 
-			_options = options.Value;
+			var currentOptions = options.Value;
 
-			if (String.IsNullOrWhiteSpace(_options.AccountSid) || String.IsNullOrWhiteSpace(_options.AuthToken))
+			if (String.IsNullOrWhiteSpace(currentOptions.AccountSid) || String.IsNullOrWhiteSpace(currentOptions.AuthToken))
 				throw new ArgumentNullException(
-					$"{nameof(_options.AccountSid)} and/or {nameof(_options.AuthToken)} is missing.");
+					$"{nameof(currentOptions.AccountSid)} and/or {nameof(currentOptions.AuthToken)} is missing.");
 
-			if (String.IsNullOrWhiteSpace(_options.ChatServiceId))
-				throw new ArgumentNullException($"{nameof(_options.ChatServiceId)} is missing.");
+			if (String.IsNullOrWhiteSpace(currentOptions.ChatServiceId))
+				throw new ArgumentNullException($"{nameof(currentOptions.ChatServiceId)} is missing.");
 
-			_chatServiceId = _options.ChatServiceId;
+			_chatServiceId = currentOptions.ChatServiceId;
 
-			_twilioRestClient = new TwilioRestClient(_options.AccountSid, _options.AuthToken, httpClient: new SystemNetHttpClient(httpClient));
+			_twilioRestClient = new TwilioRestClient(currentOptions.AccountSid, currentOptions.AuthToken, httpClient: new SystemNetHttpClient(httpClient));
 		}
 
 		public async Task<HttpClientResult<List<User>>> UserBulkRetrieveAsync(int pageSize, int? limit = null)
@@ -136,6 +135,31 @@ namespace TwilioHttpClient
 			}
 		}
 
+		public async Task<HttpClientResult<Channel>> ChannelFetchAsync(string channelUniqueIdentifier)
+		{
+			if (String.IsNullOrWhiteSpace(channelUniqueIdentifier))
+				return new HttpClientResult<Channel>(HttpStatusCode.BadRequest, $"Invalid {nameof(channelUniqueIdentifier)} value: [{channelUniqueIdentifier}]");
+
+			try
+			{
+				ChannelResource fetchResult = await ChannelResource.FetchAsync(_chatServiceId, channelUniqueIdentifier).ConfigureAwait(false);
+
+				var payload = new Channel
+				{
+					UniqueName = fetchResult.UniqueName,
+					FriendlyName = fetchResult.FriendlyName,
+					MembersCount = fetchResult.MembersCount ?? 0,
+					Attributes = CustomJsonSerializer.DeserializeFromString<ChannelAttributes>(fetchResult.Attributes)
+				};
+
+				return new HttpClientResult<Channel>(HttpStatusCode.OK, payload);
+			}
+			catch (Exception ex)
+			{
+				return ProcessException<Channel>(ex, nameof(ChannelFetchAsync));
+			}
+		}
+
 		public async Task<HttpClientResult<User>> UserFetchAsync(string userId)
 		{
 			if (!Int32.TryParse(userId, out int userIdAsInt) || userIdAsInt <= 0)
@@ -167,7 +191,8 @@ namespace TwilioHttpClient
 
             try
             {
-                ResourceSet<MemberResource> readResult = await MemberResource.ReadAsync(_chatServiceId, channelUniqueIdentifier, client: _twilioRestClient);
+                ResourceSet<MemberResource> readResult =
+	                await MemberResource.ReadAsync(_chatServiceId, channelUniqueIdentifier, client: _twilioRestClient).ConfigureAwait(false);
                 var payload = readResult.Select(mr => new Member { Id = mr.Identity }).ToArray();
 
                 return new HttpClientResult<Member[]>(HttpStatusCode.OK, payload);
@@ -178,13 +203,38 @@ namespace TwilioHttpClient
             }
 		}
 
+		public async Task<HttpClientResult<List<UserChannel>>> UserChannelsBulkRetrieveAsync(string userId, int pageSize, int? limit = null)
+		{
+			if (!Int32.TryParse(userId, out int userIdAsInt) || userIdAsInt <= 0)
+				return new HttpClientResult<List<UserChannel>>(HttpStatusCode.BadRequest, $"Invalid {nameof(userId)} value: [{userId}]");
+
+			int currentPageSize = pageSize > 0 ? pageSize : DefaultPageSize;
+
+			try
+			{
+				var options = new ReadUserChannelOptions(_chatServiceId, userId)
+				{
+					PageSize = currentPageSize,
+					Limit = limit
+				};
+				ResourceSet<UserChannelResource> userChannelResources = await UserChannelResource.ReadAsync(options, _twilioRestClient);
+
+				var result = userChannelResources.Select(cr => new UserChannel { ChannelSid = cr.ChannelSid }).ToList();
+				return new HttpClientResult<List<UserChannel>>(HttpStatusCode.OK, result);
+			}
+			catch (Exception ex)
+			{
+				return ProcessException<List<UserChannel>>(ex, nameof(UserChannelsBulkRetrieveAsync));
+			}
+		}
+
         private HttpClientResult<T> ProcessException<T>(Exception ex, string methodName, params string[] extraInfo) where T : class
 		{
 			string loggedMessage = $"[{nameof(TwilioHttpClient)}.{methodName}]: {{0}}";
 
 			string originalMessage = String.Empty;
 
-			HttpStatusCode httpStatusCode = 0;
+			HttpStatusCode httpStatusCode;
 
 			switch (ex)
 			{

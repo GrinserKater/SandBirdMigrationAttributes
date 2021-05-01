@@ -125,8 +125,7 @@ namespace TheGrandMigrator
 		public async Task<MigrationResult<Channel>> MigrateChannelsAttributesAsync(int limit, int pageSize)
 		{
 			int? migrateNoMoreThan = null;
-			if(limit > 0)
-				migrateNoMoreThan = limit;
+			if(limit > 0) migrateNoMoreThan = limit;
 
 			int entitiesPerPage = pageSize == 0 ? Migration.DefaultPageSize : pageSize;
 
@@ -152,19 +151,41 @@ namespace TheGrandMigrator
 					continue;
 				}
 
-				Member[] channelMembers = null;
+				int[] channelMembersIds = null;
                 if (channel.MembersCount == 1)
                 {
                     HttpClientResult<Member[]> channelMemberResult = await _twilioClient.ChannelMembersBulkRetrieveAsync(channel.UniqueName);
 					// If request to Twilio is successful, we will know the only member; if not, we'll proceed with empty array:
 					// better not to add members to channel with single member at all rather then to re-add the removed one.
-                    channelMembers = channelMemberResult.IsSuccess ? channelMemberResult.Payload : Array.Empty<Member>();
+                    channelMembersIds = channelMemberResult.IsSuccess ?
+	                    channelMemberResult.Payload.Select(m => Int32.TryParse(m.Id, out int id) ? id : 0).ToArray() :
+	                    Array.Empty<int>();
                 }
 
-				// TODO: here we need to check if the members exist and migrate those if not.
+                if (channel.MembersCount == 2) channelMembersIds = channel.UniqueName.Split('-').Skip(1).Select(Int32.Parse).ToArray();
 
-				Trace.WriteLine($"Migrating channel {channel.UniqueName}...");
-                OperationResult operationResult = await MigrationUtilities.TryCreateOrUpdateChannelWithMetadata(_sendbirdClient, channel, channelMembers, result);
+                // Checking if channel members exist as SB users. If not, we'll try to migrate them. If migration fails we'll still proceed.
+				// In this case channel will simply be created with the members that already exist.
+                HttpClientResult<int[]> absentMembersResult = await _sendbirdClient.WhoIsAbsentAsync(channelMembersIds);
+                if (absentMembersResult.IsSuccess && absentMembersResult.Payload.Length > 0)
+                {
+	                Trace.WriteLine($"Migrating the nonexistent members of the channel {channel.UniqueName}...");
+					foreach (int memberId in absentMembersResult.Payload)
+	                {
+		                Trace.WriteLine($"\tMigrating the member with ID {memberId} of the channel {channel.UniqueName}...");
+		                var memberMigrationResult = await MigrateSingleUserAttributesAsync(memberId.ToString(), true);
+		                if (memberMigrationResult.FailedCount > 0)
+		                {
+			                Trace.WriteLine($"\tMigration of the member with ID {memberId} of the channel {channel.UniqueName} failed. Reason: {memberMigrationResult.Message}.");
+			                result.ErrorMessages.AddRange(memberMigrationResult.ErrorMessages);
+		                }
+		                else
+			                Trace.WriteLine($"\tMigration of the member with ID {memberId} of the channel {channel.UniqueName} succeeded.");
+	                }
+                }
+
+                Trace.WriteLine($"Migrating channel {channel.UniqueName}...");
+                OperationResult operationResult = await MigrationUtilities.TryCreateOrUpdateChannelWithMetadata(_sendbirdClient, channel, channelMembersIds, result);
 
 				switch (operationResult)
 				{
@@ -209,8 +230,26 @@ namespace TheGrandMigrator
 				return result;
 			}
 
-			var userMigrationResult = await MigrateSingleUserAttributesAsync(accountUserId.ToString(), false);
+			MigrationResult<User> userMigrationResult = await MigrateSingleUserAttributesAsync(accountUserId.ToString(), false);
 
+			if (userMigrationResult.FailedCount > 0)
+			{
+				result.EntitiesFailed.AddRange(userMigrationResult.EntitiesFailed);
+				result.Message = "Migration of the account failed. See ErrorMessages for details.";
+				result.ErrorMessages.Add(
+					$"Failed to migrate the user with ID {accountUserId}; reason: {userMigrationResult.Message}.");
+				Debug.WriteLine(result.ErrorMessages.Last());
+				return result;
+			}
+
+			MigrationResult<Channel> channelsMigrationResult = await MigrateSingleUserChannelsAttributesAsync(accountUserId.ToString(), limit, pageSize);
+
+			result.EntitiesFailed.AddRange(channelsMigrationResult.EntitiesFailed);
+			result.EntitiesSucceeded.AddRange(channelsMigrationResult.EntitiesSucceeded);
+			result.ErrorMessages.AddRange(channelsMigrationResult.ErrorMessages);
+			result.Message = channelsMigrationResult.Message;
+
+			return result;
         }
 
 		private void WriteMigrationResultLogFiles<T>(MigrationResult<T> result)
@@ -333,5 +372,112 @@ namespace TheGrandMigrator
 			result.EntitiesSucceeded.Add(user);
 			return result;
         }
+
+		private async Task<MigrationResult<Channel>> MigrateSingleUserChannelsAttributesAsync(string userId, int limit, int pageSize)
+		{
+			int? migrateNoMoreThan = null;
+			if (limit > 0) migrateNoMoreThan = limit;
+			int entitiesPerPage = pageSize == 0 ? Migration.DefaultPageSize : pageSize;
+
+			var result = new MigrationResult<Channel>();
+
+			// Unfortunately, smart Twilio engineers decided to return absolutely different object as UserChannelResource rather than ChannelResource.
+			HttpClientResult<List<UserChannel>> userChannelsFetchResult = await _twilioClient.UserChannelsBulkRetrieveAsync(userId, entitiesPerPage, migrateNoMoreThan);
+			if (!userChannelsFetchResult.IsSuccess)
+			{
+				result.Message = $"Migration of account's attributes for the ID {userId} failed. See ErrorMessages for details.";
+				result.ErrorMessages.Add($"Message: [{userChannelsFetchResult.FormattedMessage}]; HTTP status code: [{userChannelsFetchResult.HttpStatusCode}]");
+				Debug.WriteLine(result.ErrorMessages.Last());
+				return result;
+			}
+
+			if (userChannelsFetchResult.Payload.Count == 0)
+			{
+				result.Message = $"No channels attributes for the account ID {userId} to migrate.";
+				return result;
+			}
+
+			foreach (UserChannel userChannel in userChannelsFetchResult.Payload)
+			{
+				HttpClientResult<Channel> channelFetchResult = await _twilioClient.ChannelFetchAsync(userChannel.ChannelSid);
+				if (!channelFetchResult.IsSuccess)
+				{
+					result.ErrorMessages.Add(
+						$"Failed to retrieve channel with SID {userChannel.ChannelSid}; reason: {channelFetchResult.FormattedMessage}; HTTP status code: {channelFetchResult.HttpStatusCode}.");
+					Debug.WriteLine(result.ErrorMessages.Last());
+					continue;
+				}
+
+				var channel = channelFetchResult.Payload;
+
+				result.EntitiesFetched.Add(channel);
+
+				List<int> channelMembersIds = new List<int>{ Int32.Parse(userId) };
+
+				if (channel.MembersCount == 2)
+				{
+					int secondChannelMember = Int32.Parse(channel.UniqueName.Split('-').Skip(1).First(id => channelMembersIds.All(cmi => cmi != Int32.Parse(id))));
+
+					// Checking if the channel member exists as SB users. If not, we'll try to migrate them. If migration fails we'll still proceed.
+					// In this case channel will simply be created with the members that already exist.
+					HttpClientResult<int[]> absentMembersResult = await _sendbirdClient.WhoIsAbsentAsync(new[] { secondChannelMember });
+					if (absentMembersResult.IsSuccess && absentMembersResult.Payload.Length > 0)
+					{
+						Trace.WriteLine($"Migrating the nonexistent member with ID {secondChannelMember} of the channel {channel.UniqueName}...");
+						var memberMigrationResult = await MigrateSingleUserAttributesAsync(secondChannelMember.ToString(), true);
+						if (memberMigrationResult.FailedCount > 0)
+						{
+							Trace.WriteLine(
+								$"\tMigration of the member with ID {secondChannelMember} of the channel {channel.UniqueName} failed. Reason: {memberMigrationResult.Message}.");
+							result.ErrorMessages.AddRange(memberMigrationResult.ErrorMessages);
+						}
+						else Trace.WriteLine($"\tMigration of the member with ID {secondChannelMember} of the channel {channel.UniqueName} succeeded.");
+
+						channelMembersIds.Add(secondChannelMember);
+					}
+				}
+
+				Trace.WriteLine($"Migrating channel {channel.UniqueName}...");
+				OperationResult operationResult =
+					await MigrationUtilities.TryCreateOrUpdateChannelWithMetadata(_sendbirdClient, channel, channelMembersIds.ToArray(), result);
+
+				switch (operationResult)
+				{
+					case OperationResult.Failure:
+						result.EntitiesFailed.Add(channel);
+						Trace.WriteLine($"\tChannel {channel.UniqueName} failed to migrate.");
+						continue;
+					case OperationResult.Success:
+						result.EntitiesSucceeded.Add(channel);
+						Trace.WriteLine($"\tChannel {channel.UniqueName} migrated successfully.");
+						continue;
+					case OperationResult.Continuation:
+						break;
+					default:
+						continue;
+				}
+
+				operationResult = await MigrationUtilities.TryUpdateOrCreateChannelMetadata(_sendbirdClient, channel, result);
+
+				if (operationResult != OperationResult.Success)
+				{
+					result.EntitiesFailed.Add(channel);
+					Trace.WriteLine($"\tChannel {channel.UniqueName} failed to migrate. Failed to migrate metadata.");
+					continue;
+				}
+
+				result.EntitiesSucceeded.Add(channel);
+				Trace.WriteLine($"\tChannel {channel.UniqueName} migrated successfully.");
+			}
+
+			if (result.FailedCount > 0)
+				result.Message =
+					$"Not all channels' attributes migrated successfully. {result.FailedCount} failed, {result.SuccessCount} succeeded. See ErrorMessages for details.";
+
+			WriteMigrationResultLogFiles(result);
+
+			result.Message = $"Migration finished. Totally migrated {result.SuccessCount} channels' attributes.";
+			return result;
+		}
 	}
 }
