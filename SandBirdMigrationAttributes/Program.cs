@@ -43,10 +43,13 @@ namespace SandBirdMigrationAttributes
 				switch (options.MigrationSubject)
 				{
 					case MigrationSubject.User:
-						migrationResult = await grandMigrator.MigrateUsersAttributesAsync(options.ResourceLimit, options.PageSize);
+						migrationResult = await grandMigrator.MigrateUsersAttributesAsync(options.LaterThan, options.ResourceLimit, options.PageSize);
 						break;
 					case MigrationSubject.Channel:
-						migrationResult = await grandMigrator.MigrateChannelsAttributesAsync(options.ResourceLimit, options.PageSize);
+						migrationResult = await grandMigrator.MigrateChannelsAttributesAsync(options.LaterThan, options.ResourceLimit, options.PageSize);
+						break;
+					case MigrationSubject.Account:
+						migrationResult = await grandMigrator.MigrateSingleAccountAttributesAsync(options.LaterThan, options.AccoutId, options.ResourceLimit, options.PageSize);
 						break;
 					default:
 						Trace.WriteLine($"Unsupported migration entity {options.MigrationSubject:G}.");

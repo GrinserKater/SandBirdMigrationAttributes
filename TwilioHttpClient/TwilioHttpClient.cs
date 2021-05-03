@@ -85,9 +85,10 @@ namespace TwilioHttpClient
 
 				var result = userResources.Select(ur => new User
 				{
-					Id = ur.Identity,
+					Id           = ur.Identity,
 					FriendlyName = ur.FriendlyName,
-					Attributes = JsonSerializer.Deserialize<UserAttributes>(ur.Attributes, new JsonSerializerOptions
+					DateCreated  = ur.DateCreated,
+					Attributes   = JsonSerializer.Deserialize<UserAttributes>(ur.Attributes, new JsonSerializerOptions
 					{
 						PropertyNameCaseInsensitive = true
 					})
@@ -121,6 +122,7 @@ namespace TwilioHttpClient
 					UniqueName = cr.UniqueName,
 					FriendlyName = cr.FriendlyName,
 					MembersCount = cr.MembersCount ?? 0,
+					DateCreated = cr.DateCreated,
 					Attributes = JsonSerializer.Deserialize<ChannelAttributes>(cr.Attributes, new JsonSerializerOptions
 					{
 						PropertyNameCaseInsensitive = true

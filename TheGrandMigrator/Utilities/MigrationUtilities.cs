@@ -99,7 +99,7 @@ namespace TheGrandMigrator.Utilities
 			return channelUpsertRequest;
 		}
 
-		public static async Task<OperationResult> TryCreateOrUpdateChannelWithMetadata(ISendbirdHttpClient sendbirdClient, Channel channel, int[] channelMembersIds,
+		public static async Task<OperationResult> TryCreateOrUpdateChannelWithMetadataAsync(ISendbirdHttpClient sendbirdClient, Channel channel, int[] channelMembersIds,
 			/* Mutable */ MigrationResult<Channel> result)
 		{
 			if(sendbirdClient == null) throw new ArgumentNullException(nameof(sendbirdClient));
@@ -172,7 +172,7 @@ namespace TheGrandMigrator.Utilities
 			return OperationResult.Continuation; /* Now we need to try to update or create metadata. */
 			}
 
-		public static async Task<OperationResult> TryUpdateOrCreateChannelMetadata(ISendbirdHttpClient sendbirdClient, Channel channel,
+		public static async Task<OperationResult> TryUpdateOrCreateChannelMetadataAsync(ISendbirdHttpClient sendbirdClient, Channel channel,
 			/* Mutable */ MigrationResult<Channel> result)
 		{
 			if (sendbirdClient == null) throw new ArgumentNullException(nameof(sendbirdClient));

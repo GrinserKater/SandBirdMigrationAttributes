@@ -1,4 +1,5 @@
-﻿using TwilioHttpClient.Abstractions;
+﻿using System;
+using TwilioHttpClient.Abstractions;
 using TwilioHttpClient.Models.Attributes.User;
 
 namespace TwilioHttpClient.Models
@@ -7,6 +8,7 @@ namespace TwilioHttpClient.Models
 	{
 		public string Id { get; set; }
 		public string FriendlyName { get; set; }
+		public DateTime? DateCreated { get; set; }
 		public UserAttributes Attributes { get; set; }
 
         public override string ToString()

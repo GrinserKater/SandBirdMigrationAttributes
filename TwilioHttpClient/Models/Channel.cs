@@ -1,4 +1,5 @@
-﻿using TwilioHttpClient.Abstractions;
+﻿using System;
+using TwilioHttpClient.Abstractions;
 using TwilioHttpClient.Models.Attributes.Channel;
 
 namespace TwilioHttpClient.Models
@@ -8,6 +9,7 @@ namespace TwilioHttpClient.Models
 		public string UniqueName { get; set; }
 		public string FriendlyName { get; set; }
         public int MembersCount { get; set; }
+        public DateTime? DateCreated { get; set; }
 
 		public ChannelAttributes Attributes { get; set; }
 

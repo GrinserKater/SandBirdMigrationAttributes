@@ -1,18 +1,23 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using CommandManager.Enums;
 
 namespace CommandManager
 {
     public class Manager
     {
-        private static readonly string UsageHint =
-            $"\tUsage: SandBirdMigrationAttributes --{MigrationSubject.User:G} | --{MigrationSubject.Channel:G} [--{Constants.CommandLineParameters.PageSizeArgument}] [--{Constants.CommandLineParameters.LimitArgument} | --{Constants.CommandLineParameters.AllArgument}] [--{Constants.CommandLineParameters.LogToFileArgument}]";
-
         public static void ShowUsageLine()
         {
-            Trace.WriteLine(UsageHint);
+			var usageHint = new StringBuilder("Usage: SandBirdMigrationAttributes ");
+			usageHint.AppendLine($"--{MigrationSubject.User:G} | --{MigrationSubject.Channel:G} | --{MigrationSubject.Account:G} <user ID>");
+			usageHint.AppendLine("Optional arguments:");
+			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.PageSizeArgument}]");
+			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LimitArgument} | --{Constants.CommandLineParameters.AllArgument}]");
+			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LogToFileArgument}]");
+			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LaterThenArgument} <date>]");
+			Trace.WriteLine(usageHint);
         }
 
         public static ExecutionOptions Manage(string[] args)
@@ -30,7 +35,7 @@ namespace CommandManager
 
 			if (String.IsNullOrWhiteSpace(migrationSubject))
 			{
-				Manager.ShowUsageLine();
+				ShowUsageLine();
 				return ExecutionOptions.Empty;
 			}
 
@@ -39,22 +44,45 @@ namespace CommandManager
 				MigrationSubject = (MigrationSubject)Enum.Parse(typeof(MigrationSubject), migrationSubject, true)
 			};
 
-			int pageSize =
-				Int32.TryParse(arguments.ElementAtOrDefault(Array.IndexOf(arguments, Constants.CommandLineParameters.PageSizeArgument) + 1), out int size) &&
-				size <= Constants.Limits.MaxAllowedPageSize ? size : Constants.Limits.DefaultPageSize;
+			if (options.MigrationSubject == MigrationSubject.Account)
+			{
+				options.AccoutId = ExtractNextPositionIntegerParameter(arguments, MigrationSubject.User.ToString(), null, null);
+				if (options.AccoutId == 0)
+				{
+					ShowUsageLine();
+					return ExecutionOptions.Empty;
+				}
+			}
 
-			int resourceLimit = Int32.TryParse(arguments.ElementAtOrDefault(Array.IndexOf(arguments, Constants.CommandLineParameters.LimitArgument) + 1), out int limit) ?
-				limit : Constants.Limits.DefaultLimit;
+			int pageSize = ExtractNextPositionIntegerParameter(arguments, Constants.CommandLineParameters.PageSizeArgument, Constants.Limits.MaxAllowedPageSize,
+				Constants.Limits.DefaultPageSize);
+			int resourceLimit = ExtractNextPositionIntegerParameter(arguments, Constants.CommandLineParameters.LimitArgument, null, Constants.Limits.DefaultLimit);
+			string logToFile = arguments.ElementAtOrDefault(Array.IndexOf(arguments, Constants.CommandLineParameters.LogToFileArgument));
 
 			if (arguments.Contains(Constants.CommandLineParameters.AllArgument)) resourceLimit = 0;
-
-			string logToFile = arguments.ElementAtOrDefault(Array.IndexOf(arguments, Constants.CommandLineParameters.LogToFileArgument));
 
 			options.PageSize = pageSize;
 			options.ResourceLimit = resourceLimit;
 			options.LogToFile = !String.IsNullOrWhiteSpace(logToFile);
+			options.LaterThan = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.LaterThenArgument);
 
 			return options;
 		}
+
+        private static int ExtractNextPositionIntegerParameter(string[] arguments, string parameterName, int? maxLimit, int? defaultValue)
+        {
+	        int result = Int32.TryParse(arguments.ElementAtOrDefault(Array.IndexOf(arguments, parameterName.ToLower()) + 1), out int value) ? value : defaultValue ?? maxLimit ?? 0;
+
+	        if (maxLimit.HasValue && !defaultValue.HasValue) return result;
+
+			return result > maxLimit ? defaultValue.Value : result;
+        }
+
+        private static DateTime? ExtractNextPositionDateTimeParameter(string[] arguments, string parameterName)
+        {
+	        if(!DateTime.TryParse(arguments.ElementAtOrDefault(Array.IndexOf(arguments, parameterName.ToLower()) + 1), out DateTime value)) return null;
+
+			return value;
+        }
 	}
 }

@@ -15,6 +15,7 @@
             public const string LimitArgument = "limit";
             public const string AllArgument = "all";
             public const string LogToFileArgument = "logtofile";
+            public const string LaterThenArgument = "laterthen";
         }
     }
 }
