@@ -5,6 +5,7 @@ namespace TheGrandMigrator.Models
 {
 	public class MigrationResult<T> : IMigrationResult
 	{
+		public bool IsFailure => ErrorMessages.Count > 0;
 		public int FetchedCount => EntitiesFetched.Count; 
 		public int SuccessCount => EntitiesSucceeded.Count;
 		public int FailedCount => EntitiesFailed.Count;

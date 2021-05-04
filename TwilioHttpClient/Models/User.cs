@@ -9,6 +9,7 @@ namespace TwilioHttpClient.Models
 		public string Id { get; set; }
 		public string FriendlyName { get; set; }
 		public DateTime? DateCreated { get; set; }
+		public string ProfileImageUrl { get; set; }
 		public UserAttributes Attributes { get; set; }
 
         public override string ToString()

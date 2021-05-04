@@ -144,7 +144,7 @@ namespace TwilioHttpClient
 
 			try
 			{
-				ChannelResource fetchResult = await ChannelResource.FetchAsync(_chatServiceId, channelUniqueIdentifier).ConfigureAwait(false);
+				ChannelResource fetchResult = await ChannelResource.FetchAsync(_chatServiceId, channelUniqueIdentifier, _twilioRestClient).ConfigureAwait(false);
 
 				var payload = new Channel
 				{
@@ -169,16 +169,15 @@ namespace TwilioHttpClient
 
             try
             {
-                UserResource fetchResult = await UserResource.FetchAsync(_chatServiceId, userId).ConfigureAwait(false);
-
-				var payload = new User
+                UserResource fetchResult = await UserResource.FetchAsync(_chatServiceId, userId, _twilioRestClient).ConfigureAwait(false);
+                var payload = new User
 				{
 					Id = fetchResult.Identity,
 					FriendlyName = fetchResult.FriendlyName,
-					Attributes = CustomJsonSerializer.DeserializeFromString<UserAttributes>(fetchResult.Attributes)
+					DateCreated = fetchResult.DateCreated,
+                    Attributes = CustomJsonSerializer.DeserializeFromString<UserAttributes>(fetchResult.Attributes)
 				};
-
-				return new HttpClientResult<User>(HttpStatusCode.OK, payload);
+                return new HttpClientResult<User>(HttpStatusCode.OK, payload);
             }
 			catch(Exception ex)
             {

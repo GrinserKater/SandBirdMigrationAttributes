@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -19,7 +20,8 @@ using SendbirdUserResource = SendbirdHttpClient.Models.User.UserResource;
 
 namespace TheGrandMigrator
 {
-	public class Migrator : IMigrator
+	[SuppressMessage("ReSharper", "UnusedMethodReturnValue.Local")]
+    public class Migrator : IMigrator
 	{
 		private readonly string _successLogFileName = $"successfull_entities_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.log";
 		private readonly string _failedLogFileName = $"failed_entities_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.log";
@@ -166,7 +168,7 @@ namespace TheGrandMigrator
 			// When migrating a single account we will always migrate a user, because they may have recent channels.
 			MigrationResult<User> userMigrationResult = await MigrateSingleUserAttributesAsync(accountUserId.ToString(), false, null);
 
-			if (userMigrationResult.FailedCount > 0)
+			if (userMigrationResult.FetchedCount == 0 || userMigrationResult.FailedCount > 0)
 			{
 				result.EntitiesFailed.AddRange(userMigrationResult.EntitiesFailed);
 				result.Message = "Migration of the account failed. See ErrorMessages for details.";
@@ -234,7 +236,9 @@ namespace TheGrandMigrator
 
 			var userUpsertRequestBody = new UserUpsertRequest
 			{
-				Nickname = user.FriendlyName,
+				UserId = user.Id,
+                Nickname = user.FriendlyName,
+				ProfileImageUrl = user.ProfileImageUrl ?? String.Empty, // required by Sendbird
 				Metadata = new UserMetadata(),
 				IssueSessionToken = true
 			};

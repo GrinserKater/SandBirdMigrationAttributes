@@ -22,9 +22,8 @@ namespace TwilioHttpClient.Extensions
 				})
 				.AddHttpClient<ITwilioHttpClient, TwilioHttpClient>()
 				.AddPolicyHandler(Resilience.BuildRetryPolicy());
-				//.AddSingleton<ITwilioHttpClient, TwilioHttpClient>();
 
-			return services;
+            return services;
 		}
 	}
 }

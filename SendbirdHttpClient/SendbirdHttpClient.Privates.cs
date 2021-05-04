@@ -198,9 +198,11 @@ namespace SendbirdHttpClient
 
 			string requestUrl = $"{_restEndpoints[Api.Endpoints.Users]}?{Api.Parameters.UserIds}={userIdsAsString}";
 
-            HttpClientResult<UserResource[]> result = await SendAsync<UserResource[]>(requestUrl, HttpMethod.Get);
+            HttpClientResult<UsersSet> result = await SendAsync<UsersSet> (requestUrl, HttpMethod.Get);
 
-            return result;
+			if (!result.IsSuccess) return result.ShallowCopy<UserResource[]>();
+
+			return result.Convert(us => us.Users);
         }
     }
 }

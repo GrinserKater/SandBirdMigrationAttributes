@@ -46,7 +46,7 @@ namespace CommandManager
 
 			if (options.MigrationSubject == MigrationSubject.Account)
 			{
-				options.AccoutId = ExtractNextPositionIntegerParameter(arguments, MigrationSubject.User.ToString(), null, null);
+				options.AccoutId = ExtractNextPositionIntegerParameter(arguments, MigrationSubject.Account.ToString(), null, null);
 				if (options.AccoutId == 0)
 				{
 					ShowUsageLine();
@@ -56,7 +56,7 @@ namespace CommandManager
 
 			int pageSize = ExtractNextPositionIntegerParameter(arguments, Constants.CommandLineParameters.PageSizeArgument, Constants.Limits.MaxAllowedPageSize,
 				Constants.Limits.DefaultPageSize);
-			int resourceLimit = ExtractNextPositionIntegerParameter(arguments, Constants.CommandLineParameters.LimitArgument, null, Constants.Limits.DefaultLimit);
+			int resourceLimit = ExtractNextPositionIntegerParameter(arguments, Constants.CommandLineParameters.LimitArgument, null, null);
 			string logToFile = arguments.ElementAtOrDefault(Array.IndexOf(arguments, Constants.CommandLineParameters.LogToFileArgument));
 
 			if (arguments.Contains(Constants.CommandLineParameters.AllArgument)) resourceLimit = 0;
@@ -71,7 +71,7 @@ namespace CommandManager
 
         private static int ExtractNextPositionIntegerParameter(string[] arguments, string parameterName, int? maxLimit, int? defaultValue)
         {
-	        int result = Int32.TryParse(arguments.ElementAtOrDefault(Array.IndexOf(arguments, parameterName.ToLower()) + 1), out int value) ? value : defaultValue ?? maxLimit ?? 0;
+	        int result = Int32.TryParse(arguments.ElementAtOrDefault(Array.IndexOf(arguments, parameterName.ToLower()) + 1), out int value) ? value : maxLimit ?? defaultValue ?? 0;
 
 	        if (maxLimit.HasValue && !defaultValue.HasValue) return result;
 

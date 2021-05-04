@@ -73,7 +73,11 @@ namespace SendbirdHttpClient
 				return new HttpClientResult<List<UserResource>>(HttpStatusCode.BadRequest,
 					"SendbirdClientService.BlockUsersBulkAsync: invalid input parameters.");
 
-			var requestBody = new UserBlockRequest { OriginatorUserId = originatorUserId };
+			var requestBody = new UserBlockRequest
+            {
+                OriginatorUserId = originatorUserId,
+				UserIdsToBlock = new int[idsToBlock.Length]
+            };
 
 			Array.Copy(idsToBlock, requestBody.UserIdsToBlock, idsToBlock.Length);
 
