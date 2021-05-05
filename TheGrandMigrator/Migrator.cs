@@ -25,6 +25,7 @@ namespace TheGrandMigrator
 	{
 		private readonly string _successLogFileName = $"successfull_entities_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.log";
 		private readonly string _failedLogFileName = $"failed_entities_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.log";
+        private readonly string _skippedLogFileName = $"skipped_entities_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.log";
 		private readonly ITwilioHttpClient _twilioClient;
 		private readonly ISendbirdHttpClient _sendbirdClient;
 
@@ -95,7 +96,7 @@ namespace TheGrandMigrator
 				if (channel.DateCreated < laterThan)
 				{
 					Trace.WriteLine($"\tChannel {channel.UniqueName} skipped. Created on {channel.DateCreated}. Requested time period from {laterThan}.");
-					result.EntitiesSucceeded.Add(channel);
+					result.EntitiesSkipped.Add(channel);
 					continue;
 				}
 
@@ -190,15 +191,11 @@ namespace TheGrandMigrator
 
 		private void WriteMigrationResultLogFiles<T>(MigrationResult<T> result)
         {
-			if(result.SuccessCount > 0)
-            {
-				File.WriteAllLines(_successLogFileName, result.EntitiesSucceeded.Select(e => e.ToString()).ToArray());
-			}
+			if(result.SuccessCount > 0) File.WriteAllLines(_successLogFileName, result.EntitiesSucceeded.Select(e => e.ToString()).ToArray());
 
-			if(result.FailedCount > 0)
-            {
-				File.WriteAllLines(_failedLogFileName, result.EntitiesFailed.Select(e => e.ToString()).ToArray());
-            }
+            if(result.FailedCount > 0) File.WriteAllLines(_failedLogFileName, result.EntitiesFailed.Select(e => e.ToString()).ToArray());
+
+            if(result.SkippedCount > 0) File.WriteAllLines(_skippedLogFileName, result.EntitiesFailed.Select(e => e.ToString()).ToArray());
 		}
 
 		private async Task<MigrationResult<User>> MigrateSingleUserAttributesAsync(string userId, bool blockExistentUsersOnly, DateTime? laterThan)
@@ -218,8 +215,8 @@ namespace TheGrandMigrator
             result.EntitiesFetched.Add(user);
 			
             await MigrateFetchedUserAsync(user, blockExistentUsersOnly, laterThan, result);
-			
-			return result;
+            WriteMigrationResultLogFiles(result);
+            return result;
         }
 
 		private async Task<bool> MigrateFetchedUserAsync(User user, bool blockExistentUsersOnly, DateTime? laterThan, /* mutable */MigrationResult<User> result)
@@ -230,14 +227,14 @@ namespace TheGrandMigrator
 			if(user.DateCreated < laterThan)
 			{
 				Trace.WriteLine($"\tUser {user.FriendlyName} with ID {user.Id} skipped. Created on {user.DateCreated}. Requested time period from {laterThan}.");
-				result.EntitiesSucceeded.Add(user);
+				result.EntitiesSkipped.Add(user);
 				return false;
 			}
 
 			var userUpsertRequestBody = new UserUpsertRequest
 			{
 				UserId = user.Id,
-                Nickname = user.FriendlyName,
+                Nickname = user.FriendlyName ?? String.Empty,
 				ProfileImageUrl = user.ProfileImageUrl ?? String.Empty, // required by Sendbird
 				Metadata = new UserMetadata(),
 				IssueSessionToken = true
@@ -312,7 +309,7 @@ namespace TheGrandMigrator
 				Trace.WriteLine($"\tMigrating blockee with the id {id}...");
 				// Yes, this is recursion. And we will migrate the blockees even if they are old enough.
 				MigrationResult<User> blockeeMigrationResult = await MigrateSingleUserAttributesAsync(id.ToString(), true, null);
-				if (blockeeMigrationResult.FailedCount == 0) continue;
+				if (blockeeMigrationResult.FailedCount == 0 && blockeeMigrationResult.FetchedCount > 0) continue;
 
 				atLeastOneFailed = true;
 				result.ErrorMessages.AddRange(blockeeMigrationResult.ErrorMessages);
@@ -321,8 +318,8 @@ namespace TheGrandMigrator
 
 			// Even if one or several of the blockees failed to migrate, we consider the "main" user success.
 			string finalMessage = atLeastOneFailed ?
-				$"\tUser {user.FriendlyName} with ID {user.Id} migrated successfully with the blockees." :
-				$"\tUser {user.FriendlyName} with ID {user.Id} migrated successfully, but some or all of the blockees failed.";
+				$"\tUser {user.FriendlyName} with ID {user.Id} migrated successfully, but some or all of the blockees failed.":
+                $"\tUser {user.FriendlyName} with ID {user.Id} migrated successfully with the blockees.";
 			Trace.WriteLine(finalMessage);
 			result.EntitiesSucceeded.Add(user);
 			return true;
@@ -372,7 +369,7 @@ namespace TheGrandMigrator
 				if (channel.DateCreated < laterThan)
 				{
 					Trace.WriteLine($"\tChannel {channel.UniqueName} skipped. Created on {channel.DateCreated}. Requested time period from {laterThan}.");
-					result.EntitiesSucceeded.Add(channel);
+					result.EntitiesSkipped.Add(channel);
 					continue;
 				}
 

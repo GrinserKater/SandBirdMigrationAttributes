@@ -93,10 +93,9 @@ namespace SendbirdHttpClient
 			string requestUrl =
 				$"{_restEndpoints[Api.Endpoints.Users]}/{requestBody.OriginatorUserId}/{_restEndpoints[Api.Endpoints.Block]}";
 
-			HttpClientResult<List<UserResource>> result = await SendAsync<List<UserResource>, UserBlockRequest>(requestUrl, HttpMethod.Put, requestBody);
-
-			return result;
-		}
+			HttpClientResult<UsersSet> result = await SendAsync<UsersSet, UserBlockRequest>(requestUrl, HttpMethod.Post, requestBody);
+			return !result.IsSuccess ? result.ShallowCopy<List<UserResource>>() : result.Convert(us => us.Users.ToList());
+        }
 		
 		public async Task<HttpClientResult<UserMetadata>> CreateUserMetadataAsync(int userId, MetadataUpsertRequest<UserMetadata> metadata)
 		{

@@ -16,7 +16,7 @@ namespace CommandManager
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.PageSizeArgument}]");
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LimitArgument} | --{Constants.CommandLineParameters.AllArgument}]");
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LogToFileArgument}]");
-			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LaterThenArgument} <date>]");
+			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LaterThanArgument} <date>]");
 			Trace.WriteLine(usageHint);
         }
 
@@ -64,7 +64,7 @@ namespace CommandManager
 			options.PageSize = pageSize;
 			options.ResourceLimit = resourceLimit;
 			options.LogToFile = !String.IsNullOrWhiteSpace(logToFile);
-			options.LaterThan = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.LaterThenArgument);
+			options.LaterThan = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.LaterThanArgument);
 
 			return options;
 		}

@@ -6,6 +6,7 @@ namespace TheGrandMigrator.Abstractions
 	{
 		int FetchedCount { get; }
 		int SuccessCount { get; }
+		int SkippedCount { get; }
 		int FailedCount { get; }
 		List<string> ErrorMessages { get; }
 		string Message { get; set; }

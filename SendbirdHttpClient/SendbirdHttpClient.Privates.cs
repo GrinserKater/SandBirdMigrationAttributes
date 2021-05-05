@@ -118,12 +118,12 @@ namespace SendbirdHttpClient
 			return false;
 		}
 
-		private HttpClientResult<Failure> BuildFailureResult(string responseContent)
+		private HttpClientResult<Failure> BuildFailureResult(string responseContent, HttpStatusCode statusCode, string reasonPhrase)
 		{
 			Failure failureResponse = CustomJsonSerializer.DeserializeFromString<Failure>(responseContent);
 
 			return failureResponse == null ?
-				new HttpClientResult<Failure>(HttpStatusCode.InternalServerError, "Failed to deserilase error response.") :
+				new HttpClientResult<Failure>(statusCode, $"Failed to deserilase error response. Probably, the content is empty. Reason pharse: {reasonPhrase}.") :
 				new HttpClientResult<Failure>(ConvertErrorStatusCode((ErrorCodes)failureResponse.Code), failureResponse.Message);
 		}
 
@@ -162,7 +162,7 @@ namespace SendbirdHttpClient
 				if (response.IsSuccessStatusCode)
 					return new HttpClientResult<T>(response.StatusCode, CustomJsonSerializer.DeserializeFromString<T>(responseContent));
 
-				HttpClientResult<Failure> errorResult = BuildFailureResult(responseContent);
+				HttpClientResult<Failure> errorResult = BuildFailureResult(responseContent, response.StatusCode, response.ReasonPhrase);
 
 				return errorResult.ShallowCopy<T>();
 			}

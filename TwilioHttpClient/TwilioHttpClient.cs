@@ -151,6 +151,7 @@ namespace TwilioHttpClient
 					UniqueName = fetchResult.UniqueName,
 					FriendlyName = fetchResult.FriendlyName,
 					MembersCount = fetchResult.MembersCount ?? 0,
+					DateCreated = fetchResult.DateCreated,
 					Attributes = CustomJsonSerializer.DeserializeFromString<ChannelAttributes>(fetchResult.Attributes)
 				};
 
