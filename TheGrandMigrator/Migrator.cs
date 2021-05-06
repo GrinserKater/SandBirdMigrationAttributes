@@ -35,7 +35,7 @@ namespace TheGrandMigrator
 			_sendbirdClient = sendbirdClient ?? throw new ArgumentNullException(nameof(sendbirdClient));
 		}
 
-		public async Task<MigrationResult<User>> MigrateUsersAttributesAsync(DateTime? laterThan, int limit, int pageSize)
+		public async Task<MigrationResult<User>> MigrateUsersAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, int limit, int pageSize)
 		{
 			int? migrateNoMoreThan = null;
 			if(limit > 0) migrateNoMoreThan = limit;
@@ -56,8 +56,7 @@ namespace TheGrandMigrator
 			foreach (User user in twilioUsersResult.Payload)
 			{
 				result.EntitiesFetched.Add(user);
-
-				await MigrateFetchedUserAsync(user, false, laterThan, result);
+                await MigrateFetchedUserAsync(user, false, dateBefore, dateAfter, result);
 			}
 
 			if (result.FailedCount > 0)
@@ -70,7 +69,7 @@ namespace TheGrandMigrator
 			return result;
 		}
 
-		public async Task<MigrationResult<Channel>> MigrateChannelsAttributesAsync(DateTime? laterThan, int limit, int pageSize)
+		public async Task<MigrationResult<IResource>> MigrateChannelsAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, int limit, int pageSize)
 		{
 			int? migrateNoMoreThan = null;
 			if(limit > 0) migrateNoMoreThan = limit;
@@ -79,7 +78,7 @@ namespace TheGrandMigrator
 
 			HttpClientResult<List<Channel>> twilioChannelResult = await _twilioClient.ChannelBulkRetrieveAsync(entitiesPerPage, migrateNoMoreThan);
 
-			var result = new MigrationResult<Channel>();
+			var result = new MigrationResult<IResource>();
 
 			if (!twilioChannelResult.IsSuccess)
 			{
@@ -93,9 +92,10 @@ namespace TheGrandMigrator
 			{
 				result.EntitiesFetched.Add(channel);
 
-				if (channel.DateCreated < laterThan)
+				if (channel.DateCreated?.Date > dateBefore || channel.DateCreated?.Date < dateAfter)
 				{
-					Trace.WriteLine($"\tChannel {channel.UniqueName} skipped. Created on {channel.DateCreated}. Requested time period from {laterThan}.");
+					Trace.WriteLine(
+                        $"\tChannel {channel.UniqueName} skipped. Created on {channel.DateCreated}. Requested time period {(dateBefore == null ? $"after {dateAfter}" : $"before {dateBefore}")}.");
 					result.EntitiesSkipped.Add(channel);
 					continue;
 				}
@@ -131,7 +131,7 @@ namespace TheGrandMigrator
 	                {
 		                Trace.WriteLine($"\tMigrating the member with ID {memberId} of the channel {channel.UniqueName}...");
 						// We won't pay attention to the date of creation when migrating channel's members.
-		                var memberMigrationResult = await MigrateSingleUserAttributesAsync(memberId.ToString(), true, null);
+		                var memberMigrationResult = await MigrateSingleUserAttributesAsync(memberId.ToString(), true, null, null);
 		                if (memberMigrationResult.FailedCount > 0)
 		                {
 			                Trace.WriteLine($"\tMigration of the member with ID {memberId} of the channel {channel.UniqueName} failed. Reason: {memberMigrationResult.Message}.");
@@ -155,7 +155,7 @@ namespace TheGrandMigrator
 			return result;
 		}
 
-		public async Task<MigrationResult<IResource>> MigrateSingleAccountAttributesAsync(DateTime? laterThan, int accountUserId, int limit, int pageSize)
+		public async Task<MigrationResult<IResource>> MigrateSingleAccountAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, int accountUserId, int limit, int pageSize)
         {
 			var result = new MigrationResult<IResource>();
 
@@ -167,38 +167,50 @@ namespace TheGrandMigrator
 			}
 
 			// When migrating a single account we will always migrate a user, because they may have recent channels.
-			MigrationResult<User> userMigrationResult = await MigrateSingleUserAttributesAsync(accountUserId.ToString(), false, null);
-
-			if (userMigrationResult.FetchedCount == 0 || userMigrationResult.FailedCount > 0)
-			{
-				result.EntitiesFailed.AddRange(userMigrationResult.EntitiesFailed);
-				result.Message = "Migration of the account failed. See ErrorMessages for details.";
-				result.ErrorMessages.Add(
-					$"Failed to migrate the user with ID {accountUserId}; reason: {userMigrationResult.Message}.");
-				Debug.WriteLine(result.ErrorMessages.Last());
-				return result;
+			MigrationResult<User> userMigrationResult = await MigrateSingleUserAttributesAsync(accountUserId.ToString(), false, null, null);
+            if (userMigrationResult.FetchedCount == 0)
+            {
+                result.Message = "Migration of the account failed. See ErrorMessages for details.";
+                result.ErrorMessages.Add($"Failed to migrate the user with ID {accountUserId}; reason: {userMigrationResult.Message}.");
+                Debug.WriteLine(result.ErrorMessages.Last());
+                return result;
 			}
 
-			MigrationResult<Channel> channelsMigrationResult = await MigrateSingleUserChannelsAttributesAsync(accountUserId.ToString(), limit, pageSize, laterThan);
+			result.EntitiesFetched.AddRange(userMigrationResult.EntitiesFetched);
+            result.EntitiesFailed.AddRange(userMigrationResult.EntitiesFailed);
+            result.EntitiesSucceeded.AddRange(userMigrationResult.EntitiesSucceeded);
+            result.EntitiesSkipped.AddRange(userMigrationResult.EntitiesSkipped);
+			result.ErrorMessages.AddRange(userMigrationResult.ErrorMessages);
 
+			if (userMigrationResult.FailedCount > 0)
+			{
+                result.Message = "Migration of the account failed. See ErrorMessages for details.";
+                Debug.WriteLine(result.ErrorMessages.Last());
+                return result;
+            }
+
+			MigrationResult<IResource> channelsMigrationResult = await MigrateSingleUserChannelsAttributesAsync(accountUserId.ToString(), limit, pageSize, dateBefore, dateAfter);
+			result.EntitiesFetched.AddRange(channelsMigrationResult.EntitiesFetched);
 			result.EntitiesFailed.AddRange(channelsMigrationResult.EntitiesFailed);
 			result.EntitiesSucceeded.AddRange(channelsMigrationResult.EntitiesSucceeded);
+			result.EntitiesSkipped.AddRange(channelsMigrationResult.EntitiesSkipped);
 			result.ErrorMessages.AddRange(channelsMigrationResult.ErrorMessages);
-			result.Message = channelsMigrationResult.Message;
+			
+            result.Message = $"{userMigrationResult.Message}; {channelsMigrationResult.Message}";
 
-			return result;
+            return result;
         }
 
 		private void WriteMigrationResultLogFiles<T>(MigrationResult<T> result)
         {
-			if(result.SuccessCount > 0) File.WriteAllLines(_successLogFileName, result.EntitiesSucceeded.Select(e => e.ToString()).ToArray());
+			if(result.SuccessCount > 0) File.AppendAllLines(_successLogFileName, result.EntitiesSucceeded.Select(e => e.ToString()).ToArray());
 
-            if(result.FailedCount > 0) File.WriteAllLines(_failedLogFileName, result.EntitiesFailed.Select(e => e.ToString()).ToArray());
+            if(result.FailedCount > 0) File.AppendAllLines(_failedLogFileName, result.EntitiesFailed.Select(e => e.ToString()).ToArray());
 
-            if(result.SkippedCount > 0) File.WriteAllLines(_skippedLogFileName, result.EntitiesFailed.Select(e => e.ToString()).ToArray());
+            if(result.SkippedCount > 0) File.AppendAllLines(_skippedLogFileName, result.EntitiesSkipped.Select(e => e.ToString()).ToArray());
 		}
 
-		private async Task<MigrationResult<User>> MigrateSingleUserAttributesAsync(string userId, bool blockExistentUsersOnly, DateTime? laterThan)
+		private async Task<MigrationResult<User>> MigrateSingleUserAttributesAsync(string userId, bool blockExistentUsersOnly, DateTime? dateBefore, DateTime? dateAfter)
         {
 			HttpClientResult<User> userFetchResult = await _twilioClient.UserFetchAsync(userId).ConfigureAwait(false);
 
@@ -214,19 +226,20 @@ namespace TheGrandMigrator
 			User user = userFetchResult.Payload;
             result.EntitiesFetched.Add(user);
 			
-            await MigrateFetchedUserAsync(user, blockExistentUsersOnly, laterThan, result);
+            await MigrateFetchedUserAsync(user, blockExistentUsersOnly, dateBefore, dateAfter, result);
             WriteMigrationResultLogFiles(result);
             return result;
         }
 
-		private async Task<bool> MigrateFetchedUserAsync(User user, bool blockExistentUsersOnly, DateTime? laterThan, /* mutable */MigrationResult<User> result)
+		private async Task<bool> MigrateFetchedUserAsync(User user, bool blockExistentUsersOnly, DateTime? dateBefore, DateTime? dateAfter, /* mutable */MigrationResult<User> result)
 		{
 			if(result == null) throw new ArgumentNullException(nameof(result));
 
 			Trace.WriteLine($"Migrating user {user.FriendlyName} with ID {user.Id}...");
-			if(user.DateCreated < laterThan)
+            if(user.DateCreated?.Date > dateBefore || user.DateCreated?.Date < dateAfter)
 			{
-				Trace.WriteLine($"\tUser {user.FriendlyName} with ID {user.Id} skipped. Created on {user.DateCreated}. Requested time period from {laterThan}.");
+				Trace.WriteLine(
+                    $"\tUser {user.FriendlyName} with ID {user.Id} skipped. Created on {user.DateCreated}. Requested time period {(dateBefore == null ? $"after {dateAfter}" : $"before {dateBefore}")}.");
 				result.EntitiesSkipped.Add(user);
 				return false;
 			}
@@ -262,7 +275,8 @@ namespace TheGrandMigrator
 			if (user.Attributes?.BlockedUsers == null || user.Attributes.BlockedUsers.Length == 0)
 			{
 				Trace.WriteLine($"\tUser {user.FriendlyName} with ID {user.Id} has no blocked users.");
-				return false;
+                result.EntitiesSucceeded.Add(user);
+				return true;
 			}
 
 			Trace.WriteLine($"\tMigrating user blockages for the user {user.FriendlyName} with ID {user.Id}.");
@@ -282,7 +296,7 @@ namespace TheGrandMigrator
 			{
 				Trace.WriteLine($"\tUser {user.FriendlyName} with ID {user.Id} migrated successfully, having no blockees. Be kind to each other :)");
 				result.EntitiesSucceeded.Add(user);
-				return false;
+				return true;
 			}
 
 			HttpClientResult<List<UserResource>> blockageResult = await _sendbirdClient.BlockUsersBulkAsync(Int32.Parse(user.Id), usersToBlock);
@@ -298,7 +312,7 @@ namespace TheGrandMigrator
 			{
 				Trace.WriteLine($"\tUser {user.FriendlyName} with ID {user.Id} migrated successfully with the existent blockees only.");
 				result.EntitiesSucceeded.Add(user);
-				return false;
+				return true;
 			}
 
 			// Worst case. The blocking endpoint on SB side returned 404. That means that at least one of the users to block does not exist on SB's side.
@@ -308,7 +322,7 @@ namespace TheGrandMigrator
 			{
 				Trace.WriteLine($"\tMigrating blockee with the id {id}...");
 				// Yes, this is recursion. And we will migrate the blockees even if they are old enough.
-				MigrationResult<User> blockeeMigrationResult = await MigrateSingleUserAttributesAsync(id.ToString(), true, null);
+				MigrationResult<User> blockeeMigrationResult = await MigrateSingleUserAttributesAsync(id.ToString(), true, null, null);
 				if (blockeeMigrationResult.FailedCount == 0 && blockeeMigrationResult.FetchedCount > 0) continue;
 
 				atLeastOneFailed = true;
@@ -325,13 +339,13 @@ namespace TheGrandMigrator
 			return true;
 		}
 
-		private async Task<MigrationResult<Channel>> MigrateSingleUserChannelsAttributesAsync(string userId, int limit, int pageSize, DateTime? laterThan)
+		private async Task<MigrationResult<IResource>> MigrateSingleUserChannelsAttributesAsync(string userId, int limit, int pageSize, DateTime? dateBefore, DateTime? dateAfter)
 		{
 			int? migrateNoMoreThan = null;
 			if (limit > 0) migrateNoMoreThan = limit;
 			int entitiesPerPage = pageSize == 0 ? Migration.DefaultPageSize : pageSize;
 
-			var result = new MigrationResult<Channel>();
+			var result = new MigrationResult<IResource>();
 
 			// Unfortunately, smart Twilio engineers decided to return absolutely different object as UserChannelResource rather than ChannelResource.
 			HttpClientResult<List<UserChannel>> userChannelsFetchResult = await _twilioClient.UserChannelsBulkRetrieveAsync(userId, entitiesPerPage, migrateNoMoreThan);
@@ -366,9 +380,9 @@ namespace TheGrandMigrator
 
 				result.EntitiesFetched.Add(channel);
 
-				if (channel.DateCreated < laterThan)
+				if (channel.DateCreated?.Date > dateBefore || channel.DateCreated?.Date < dateAfter)
 				{
-					Trace.WriteLine($"\tChannel {channel.UniqueName} skipped. Created on {channel.DateCreated}. Requested time period from {laterThan}.");
+					Trace.WriteLine($"\tChannel {channel.UniqueName} skipped. Created on {channel.DateCreated}. Requested time period {(dateBefore == null ? $"after {dateAfter}" : $"before {dateBefore}")}.");
 					result.EntitiesSkipped.Add(channel);
 					continue;
 				}
@@ -386,14 +400,26 @@ namespace TheGrandMigrator
 					{
 						Trace.WriteLine($"Migrating the nonexistent member with ID {secondChannelMember} of the channel {channel.UniqueName}...");
 						// Channel's member will be migrated disregarding the age. 
-						var memberMigrationResult = await MigrateSingleUserAttributesAsync(secondChannelMember.ToString(), true, null);
+						var memberMigrationResult = await MigrateSingleUserAttributesAsync(secondChannelMember.ToString(), true, null, null);
+                        if (memberMigrationResult.FetchedCount == 0)
+                        {
+                            Trace.WriteLine(
+                                $"\tMigration of the member with ID {secondChannelMember} of the channel {channel.UniqueName} failed. Reason: {memberMigrationResult.Message}.");
+                            result.ErrorMessages.AddRange(memberMigrationResult.ErrorMessages);
+                        }
+
 						if (memberMigrationResult.FailedCount > 0)
 						{
 							Trace.WriteLine(
 								$"\tMigration of the member with ID {secondChannelMember} of the channel {channel.UniqueName} failed. Reason: {memberMigrationResult.Message}.");
-							result.ErrorMessages.AddRange(memberMigrationResult.ErrorMessages);
+							result.EntitiesFailed.AddRange(memberMigrationResult.EntitiesFailed);
+                            result.ErrorMessages.AddRange(memberMigrationResult.ErrorMessages);
 						}
-						else Trace.WriteLine($"\tMigration of the member with ID {secondChannelMember} of the channel {channel.UniqueName} succeeded.");
+                        else
+                        {
+                            Trace.WriteLine($"\tMigration of the member with ID {secondChannelMember} of the channel {channel.UniqueName} succeeded.");
+							result.EntitiesSucceeded.AddRange(memberMigrationResult.EntitiesSucceeded);
+                        }
 
 						channelMembersIds.Add(secondChannelMember);
 					}
@@ -413,7 +439,7 @@ namespace TheGrandMigrator
 			return result;
 		}
 
-		private async Task<bool> MigrateChannelWithMetadataAsync(Channel channel, int[] channelMembersIds, /* mutable */ MigrationResult<Channel> result)
+		private async Task<bool> MigrateChannelWithMetadataAsync(Channel channel, int[] channelMembersIds, /* mutable */ MigrationResult<IResource> result)
 		{
 			Trace.WriteLine($"Migrating channel {channel.UniqueName}...");
 			OperationResult operationResult =

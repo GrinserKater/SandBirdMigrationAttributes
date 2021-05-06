@@ -16,7 +16,7 @@ namespace CommandManager
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.PageSizeArgument}]");
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LimitArgument} | --{Constants.CommandLineParameters.AllArgument}]");
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LogToFileArgument}]");
-			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LaterThanArgument} <date>]");
+			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.BeforeArgument} | --{Constants.CommandLineParameters.AfterArgument}] <date>");
 			Trace.WriteLine(usageHint);
         }
 
@@ -29,11 +29,15 @@ namespace CommandManager
 			}
 
 			string[] arguments = args.Select(a => a.Trim('-').ToLower()).ToArray();
+            if (arguments.Contains(Constants.CommandLineParameters.AfterArgument) && arguments.Contains(Constants.CommandLineParameters.BeforeArgument))
+            {
+                ShowUsageLine();
+                return ExecutionOptions.Empty;
+			}
+
 			var migrationSubjects = Enum.GetNames(typeof(MigrationSubject));
-
-			var migrationSubject = arguments.FirstOrDefault(a => migrationSubjects.Any(ms => ms.ToLower() == a.ToLower()));
-
-			if (String.IsNullOrWhiteSpace(migrationSubject))
+            var migrationSubject = arguments.FirstOrDefault(a => migrationSubjects.Any(ms => ms.ToLower() == a.ToLower()));
+            if (String.IsNullOrWhiteSpace(migrationSubject))
 			{
 				ShowUsageLine();
 				return ExecutionOptions.Empty;
@@ -64,7 +68,8 @@ namespace CommandManager
 			options.PageSize = pageSize;
 			options.ResourceLimit = resourceLimit;
 			options.LogToFile = !String.IsNullOrWhiteSpace(logToFile);
-			options.LaterThan = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.LaterThanArgument);
+			options.DateBefore = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.BeforeArgument);
+            options.DateAfter = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.AfterArgument);
 
 			return options;
 		}

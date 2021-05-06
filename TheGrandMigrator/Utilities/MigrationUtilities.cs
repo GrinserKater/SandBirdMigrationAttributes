@@ -9,6 +9,7 @@ using SendbirdHttpClient.Models.Channel;
 using SendbirdHttpClient.Models.Common;
 using TheGrandMigrator.Enums;
 using TheGrandMigrator.Models;
+using TwilioHttpClient.Abstractions;
 using TwilioHttpClient.Models;
 
 namespace TheGrandMigrator.Utilities
@@ -72,7 +73,7 @@ namespace TheGrandMigrator.Utilities
 			return String.IsNullOrWhiteSpace(channelUniqueName) ? null : channelUniqueName.Replace('-', '_');
 		}
 
-		public static void ProcessAndLogFailure(string message, Channel channel, /* Mutable */MigrationResult<Channel> result)
+		public static void ProcessAndLogFailure(string message, Channel channel, /* Mutable */MigrationResult<IResource> result)
 		{
 			if(String.IsNullOrWhiteSpace(message) || channel == null || result == null) return;
 
@@ -100,7 +101,7 @@ namespace TheGrandMigrator.Utilities
 		}
 
 		public static async Task<OperationResult> TryCreateOrUpdateChannelWithMetadataAsync(ISendbirdHttpClient sendbirdClient, Channel channel, int[] channelMembersIds,
-			/* Mutable */ MigrationResult<Channel> result)
+			/* Mutable */ MigrationResult<IResource> result)
 		{
 			if(sendbirdClient == null) throw new ArgumentNullException(nameof(sendbirdClient));
             if(channel == null || result == null) return OperationResult.Failure;
@@ -173,7 +174,7 @@ namespace TheGrandMigrator.Utilities
 			}
 
 		public static async Task<OperationResult> TryUpdateOrCreateChannelMetadataAsync(ISendbirdHttpClient sendbirdClient, Channel channel,
-			/* Mutable */ MigrationResult<Channel> result)
+			/* Mutable */ MigrationResult<IResource> result)
 		{
 			if (sendbirdClient == null) throw new ArgumentNullException(nameof(sendbirdClient));
 

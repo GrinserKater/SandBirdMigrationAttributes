@@ -8,8 +8,8 @@ namespace TheGrandMigrator.Abstractions
 {
 	public interface IMigrator
 	{
-		Task<MigrationResult<User>> MigrateUsersAttributesAsync(DateTime? laterThan, int limit, int pageSize);
-		Task<MigrationResult<Channel>> MigrateChannelsAttributesAsync(DateTime? laterThan, int limit, int pageSize);
-		Task<MigrationResult<IResource>> MigrateSingleAccountAttributesAsync(DateTime? laterThan, int accountUserId, int limit, int pageSize);
+		Task<MigrationResult<User>> MigrateUsersAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, int limit, int pageSize);
+		Task<MigrationResult<IResource>> MigrateChannelsAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, int limit, int pageSize);
+		Task<MigrationResult<IResource>> MigrateSingleAccountAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, int accountUserId, int limit, int pageSize);
 	}
 }
