@@ -2,7 +2,7 @@
   "profiles": {
     "SandBirdMigrationAttributes": {
       "commandName": "Project",
-      "commandLineArgs": "--account 2947243 --before 01.01.2021 --pageSize 50 --logtofile"
+      "commandLineArgs": "--channel --after 01.01.2021 --pageSize 50 --limit 100 --logtofile"
     }
   }
 }

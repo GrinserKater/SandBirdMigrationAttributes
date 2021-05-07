@@ -166,7 +166,7 @@ namespace TheGrandMigrator.Utilities
 
 			if (!alterFreezeResult.IsSuccess)
 				ProcessAndLogFailure(
-					$"\tFailed to {(channelUpsertRequest.Freeze ? "freeze" : "unfreeze")} the channel {channelUpsertRequest.ChannelUrl} on SB side. Reason: {channelManipulationResult.FormattedMessage}. Proceeding...",
+					$"\tFailed to {(channelUpsertRequest.Freeze ? "freeze" : "unfreeze")} the channel {channelUpsertRequest.ChannelUrl} on SB side. Reason: {alterFreezeResult.FormattedMessage}. Proceeding...",
 					channel, result);
 			// We deliberately proceed with migration here, even if we failed to freeze the channel.
 

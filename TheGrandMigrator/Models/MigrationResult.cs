@@ -3,7 +3,7 @@ using TheGrandMigrator.Abstractions;
 
 namespace TheGrandMigrator.Models
 {
-	public class MigrationResult<T> : IMigrationResult
+	public class MigrationResult<T> : IMigrationResult<T>
 	{
 		public bool IsFailure => ErrorMessages.Count > 0;
 		public int FetchedCount => EntitiesFetched.Count; 
