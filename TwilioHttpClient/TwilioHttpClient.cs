@@ -88,6 +88,7 @@ namespace TwilioHttpClient
 					Id           = ur.Identity,
 					FriendlyName = ur.FriendlyName,
 					DateCreated  = ur.DateCreated,
+					DateUpdated  = ur.DateUpdated,
 					Attributes   = JsonSerializer.Deserialize<UserAttributes>(ur.Attributes, new JsonSerializerOptions
 					{
 						PropertyNameCaseInsensitive = true
@@ -123,6 +124,7 @@ namespace TwilioHttpClient
 					FriendlyName = cr.FriendlyName,
 					MembersCount = cr.MembersCount ?? 0,
 					DateCreated = cr.DateCreated,
+					DateUpdated = cr.DateUpdated,
 					Attributes = JsonSerializer.Deserialize<ChannelAttributes>(cr.Attributes, new JsonSerializerOptions
 					{
 						PropertyNameCaseInsensitive = true
@@ -152,6 +154,7 @@ namespace TwilioHttpClient
 					FriendlyName = fetchResult.FriendlyName,
 					MembersCount = fetchResult.MembersCount ?? 0,
 					DateCreated = fetchResult.DateCreated,
+					DateUpdated = fetchResult.DateUpdated,
 					Attributes = CustomJsonSerializer.DeserializeFromString<ChannelAttributes>(fetchResult.Attributes)
 				};
 
@@ -176,6 +179,7 @@ namespace TwilioHttpClient
 					Id = fetchResult.Identity,
 					FriendlyName = fetchResult.FriendlyName,
 					DateCreated = fetchResult.DateCreated,
+					DateUpdated = fetchResult.DateUpdated,
                     Attributes = CustomJsonSerializer.DeserializeFromString<UserAttributes>(fetchResult.Attributes)
 				};
                 return new HttpClientResult<User>(HttpStatusCode.OK, payload);

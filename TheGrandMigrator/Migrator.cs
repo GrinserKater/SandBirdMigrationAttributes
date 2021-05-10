@@ -83,15 +83,14 @@ namespace TheGrandMigrator
             {
                 result.EntitiesFetched.Add(channel);
 
-                if (channel.DateCreated?.Date > dateBefore || channel.DateCreated?.Date < dateAfter)
+                if (!IsIncludedByDate(channel.DateUpdated, dateBefore, dateAfter))
                 {
-                    Trace.WriteLine(
-                        $"\tChannel {channel.UniqueName} skipped. Created on {channel.DateCreated}. Requested time period {(dateBefore == null ? $"after {dateAfter}" : $"before {dateBefore}")}.");
+                    Trace.WriteLine($"\tChannel {channel.UniqueName} skipped. Last updated on {channel.DateUpdated}. Requested time period: {(dateBefore == null ? "" : $"before {dateBefore}")} {(dateAfter == null ? "" : $"after {dateAfter}")}.");
                     result.EntitiesSkipped.Add(channel);
                     continue;
                 }
 
-                if (channel.MembersCount == 0)
+				if (channel.MembersCount == 0)
                 {
                     Trace.WriteLine($"Channel {channel.UniqueName} contained no members. Skipped.");
                     result.EntitiesSkipped.Add(channel);
@@ -212,10 +211,10 @@ namespace TheGrandMigrator
             Trace.WriteLine($"Migrating user {user.FriendlyName} with ID {user.Id} with {(blockExistentUsersOnly ? "only existent blockees":"all the blockees")} if any...");
 			MigrationResult<IResource> result = new MigrationResult<IResource>();
 
-            if(user.DateCreated?.Date > dateBefore || user.DateCreated?.Date < dateAfter)
+            if(!IsIncludedByDate(user.DateUpdated, dateBefore, dateAfter))
 			{
 				Trace.WriteLine(
-                    $"\tUser {user.FriendlyName} with ID {user.Id} skipped. Created on {user.DateCreated}. Requested time period {(dateBefore == null ? $"after {dateAfter}" : $"before {dateBefore}")}.");
+                    $"\tUser {user.FriendlyName} with ID {user.Id} skipped. Last updated on {user.DateUpdated}. Requested time period: {(dateBefore == null ? "" : $"before {dateBefore}")} {(dateAfter == null ? "" : $"after {dateAfter}")}.");
 				result.EntitiesSkipped.Add(user);
 				return result;
 			}
@@ -348,12 +347,10 @@ namespace TheGrandMigrator
 				}
 
 				var channel = channelFetchResult.Payload;
-
-				result.EntitiesFetched.Add(channel);
-
-				if (channel.DateCreated?.Date > dateBefore || channel.DateCreated?.Date < dateAfter)
-				{
-					Trace.WriteLine($"\tChannel {channel.UniqueName} skipped. Created on {channel.DateCreated}. Requested time period {(dateBefore == null ? $"after {dateAfter}" : $"before {dateBefore}")}.");
+                result.EntitiesFetched.Add(channel);
+				if(!IsIncludedByDate(channel.DateUpdated, dateBefore, dateAfter))
+                {
+					Trace.WriteLine($"\tChannel {channel.UniqueName} skipped. Last updated on {channel.DateUpdated}. Requested time period: {(dateBefore == null ? "" : $"before {dateBefore}")} {(dateAfter == null ? "" : $"after {dateAfter}")}.");
 					result.EntitiesSkipped.Add(channel);
 					continue;
 				}
@@ -457,6 +454,14 @@ namespace TheGrandMigrator
             to.EntitiesFailed.AddRange(from.EntitiesFailed);
             to.EntitiesSucceeded.AddRange(from.EntitiesSucceeded);
             to.EntitiesSkipped.AddRange(from.EntitiesSkipped);
+        }
+        private bool IsIncludedByDate(DateTime? reference, DateTime? before, DateTime? after)
+        {
+			if (reference == null || before == null && after == null) return true;
+			// Intersection (reference is IN the date interval).
+            if (after <= before) return after <= reference && reference <= before;
+			// Exclusion (reference is either older than before or younger than after).
+            return reference <= before || reference >= after;
         }
 	}
 }

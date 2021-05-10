@@ -16,7 +16,7 @@ namespace CommandManager
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.PageSizeArgument}]");
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LimitArgument} | --{Constants.CommandLineParameters.AllArgument}]");
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LogToFileArgument}]");
-			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.BeforeArgument} | --{Constants.CommandLineParameters.AfterArgument}] <date>");
+			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.BeforeArgument} <date> --{Constants.CommandLineParameters.AfterArgument}] <date>");
 			Trace.WriteLine(usageHint);
         }
 
@@ -29,13 +29,7 @@ namespace CommandManager
 			}
 
 			string[] arguments = args.Select(a => a.Trim('-').ToLower()).ToArray();
-            if (arguments.Contains(Constants.CommandLineParameters.AfterArgument) && arguments.Contains(Constants.CommandLineParameters.BeforeArgument))
-            {
-                ShowUsageLine();
-                return ExecutionOptions.Empty;
-			}
-
-			var migrationSubjects = Enum.GetNames(typeof(MigrationSubject));
+            var migrationSubjects = Enum.GetNames(typeof(MigrationSubject));
             var migrationSubject = arguments.FirstOrDefault(a => migrationSubjects.Any(ms => ms.ToLower() == a.ToLower()));
             if (String.IsNullOrWhiteSpace(migrationSubject))
 			{
@@ -57,10 +51,17 @@ namespace CommandManager
 					return ExecutionOptions.Empty;
 				}
 			}
+            options.DateBefore = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.BeforeArgument);
+            options.DateAfter = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.AfterArgument);
+            if (options.DateBefore == options.DateAfter)
+            {
+                ShowUsageLine();
+                return ExecutionOptions.Empty;
+            }
 
-			int pageSize = ExtractNextPositionIntegerParameter(arguments, Constants.CommandLineParameters.PageSizeArgument, Constants.Limits.MaxAllowedPageSize,
+            int pageSize = ExtractNextPositionIntegerParameter(arguments, Constants.CommandLineParameters.PageSizeArgument, Constants.Limits.MaxAllowedPageSize,
 				Constants.Limits.DefaultPageSize);
-			int resourceLimit = ExtractNextPositionIntegerParameter(arguments, Constants.CommandLineParameters.LimitArgument, null, null);
+			int resourceLimit = ExtractNextPositionIntegerParameter(arguments, Constants.CommandLineParameters.LimitArgument, null, Constants.Limits.DefaultLimit);
 			string logToFile = arguments.ElementAtOrDefault(Array.IndexOf(arguments, Constants.CommandLineParameters.LogToFileArgument));
 
 			if (arguments.Contains(Constants.CommandLineParameters.AllArgument)) resourceLimit = 0;
@@ -68,26 +69,20 @@ namespace CommandManager
 			options.PageSize = pageSize;
 			options.ResourceLimit = resourceLimit;
 			options.LogToFile = !String.IsNullOrWhiteSpace(logToFile);
-			options.DateBefore = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.BeforeArgument);
-            options.DateAfter = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.AfterArgument);
-
-			return options;
+            return options;
 		}
 
         private static int ExtractNextPositionIntegerParameter(string[] arguments, string parameterName, int? maxLimit, int? defaultValue)
         {
 	        int result = Int32.TryParse(arguments.ElementAtOrDefault(Array.IndexOf(arguments, parameterName.ToLower()) + 1), out int value) ? value : maxLimit ?? defaultValue ?? 0;
-
-	        if (maxLimit.HasValue && !defaultValue.HasValue) return result;
-
-			return result > maxLimit ? defaultValue.Value : result;
+            if (maxLimit.HasValue && !defaultValue.HasValue) return result;
+            return result > maxLimit ? defaultValue.Value : result;
         }
 
         private static DateTime? ExtractNextPositionDateTimeParameter(string[] arguments, string parameterName)
         {
 	        if(!DateTime.TryParse(arguments.ElementAtOrDefault(Array.IndexOf(arguments, parameterName.ToLower()) + 1), out DateTime value)) return null;
-
-			return value;
+            return value;
         }
 	}
 }

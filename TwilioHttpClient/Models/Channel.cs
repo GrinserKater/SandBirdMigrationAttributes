@@ -10,8 +10,9 @@ namespace TwilioHttpClient.Models
 		public string FriendlyName { get; set; }
         public int MembersCount { get; set; }
         public DateTime? DateCreated { get; set; }
+        public DateTime? DateUpdated { get; set; }
 
-		public ChannelAttributes Attributes { get; set; }
+        public ChannelAttributes Attributes { get; set; }
 
         public override string ToString()
         {

@@ -6,7 +6,8 @@
         {
             public const int DefaultPageSize = 100;
             public const int MaxAllowedPageSize = 1000;
-            public const int DefaultLimit = 50;
+            public const int DefaultLimit = 100;
+            public const int MaxLimitOfBlockedUsers = 20;
         }
 
         public class CommandLineParameters
