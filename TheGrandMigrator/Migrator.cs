@@ -33,9 +33,9 @@ namespace TheGrandMigrator
 		{
 			int? migrateNoMoreThan = null;
 			if(limit > 0) migrateNoMoreThan = limit;
+            int entitiesPerPage = pageSize == 0 ? Migration.DefaultPageSize : pageSize;
 
-			int entitiesPerPage = pageSize == 0 ? Migration.DefaultPageSize : pageSize;
-
+			Trace.WriteLine("Fetching users from Twilio in a bulk mode. This might take a couple of minutes...");
 			HttpClientResult<IEnumerable<User>> twilioUsersResult = _twilioClient.UserBulkRetrieve(entitiesPerPage, migrateNoMoreThan);
 
 			var result = new MigrationResult<IResource>();
@@ -47,6 +47,8 @@ namespace TheGrandMigrator
 				return result;
 			}
 
+			// TODO: filtering can be done here based on the dateBefore and dateAfter parameter.
+			// This will reduce the amount of iterations, but the logging must be adjusted appropriately. 
 			foreach (User user in twilioUsersResult.Payload)
 			{
 				result.EntitiesFetched.Add(user);
@@ -64,9 +66,9 @@ namespace TheGrandMigrator
 		{
 			int? migrateNoMoreThan = null;
 			if(limit > 0) migrateNoMoreThan = limit;
+            int entitiesPerPage = pageSize == 0 ? Migration.DefaultPageSize : pageSize;
 
-			int entitiesPerPage = pageSize == 0 ? Migration.DefaultPageSize : pageSize;
-
+            Trace.WriteLine("Fetching channels from Twilio in a bulk mode. This might take a couple of minutes...");
 			HttpClientResult<List<Channel>> twilioChannelResult = await _twilioClient.ChannelBulkRetrieveAsync(entitiesPerPage, migrateNoMoreThan);
 
 			var result = new MigrationResult<IResource>();
@@ -79,7 +81,9 @@ namespace TheGrandMigrator
 				return result;
 			}
 
-            foreach (Channel channel in twilioChannelResult.Payload)
+            // TODO: filtering can be done here based on the dateBefore and dateAfter parameter, and on member count.
+            // This will reduce the amount of iterations, but the logging must be adjusted appropriately. 
+			foreach (Channel channel in twilioChannelResult.Payload)
             {
                 result.EntitiesFetched.Add(channel);
 

@@ -53,7 +53,7 @@ namespace CommandManager
 			}
             options.DateBefore = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.BeforeArgument);
             options.DateAfter = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.AfterArgument);
-            if (options.DateBefore == options.DateAfter)
+            if (options.DateBefore.HasValue && options.DateAfter.HasValue && options.DateBefore == options.DateAfter)
             {
                 ShowUsageLine();
                 return ExecutionOptions.Empty;
