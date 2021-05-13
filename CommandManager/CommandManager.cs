@@ -51,6 +51,10 @@ namespace CommandManager
 					return ExecutionOptions.Empty;
 				}
 			}
+
+            if (options.MigrationSubject == MigrationSubject.Channel)
+                options.ChannelUniqueIdentifier = ExtractNextPositionStringParameter(arguments, MigrationSubject.Channel.ToString());
+
             options.DateBefore = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.BeforeArgument);
             options.DateAfter = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.AfterArgument);
             if (options.DateBefore.HasValue && options.DateAfter.HasValue && options.DateBefore == options.DateAfter)
@@ -83,6 +87,13 @@ namespace CommandManager
         {
 	        if(!DateTime.TryParse(arguments.ElementAtOrDefault(Array.IndexOf(arguments, parameterName.ToLower()) + 1), out DateTime value)) return null;
             return value;
+        }
+
+        private static string ExtractNextPositionStringParameter(string[] arguments, string parameterName)
+        {
+            string result = arguments.ElementAtOrDefault(Array.IndexOf(arguments, parameterName.ToLower()) + 1);
+			if (String.IsNullOrWhiteSpace(result) || result.StartsWith("--")) return String.Empty;
+			return result;
         }
 	}
 }
