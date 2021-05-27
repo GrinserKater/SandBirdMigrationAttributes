@@ -372,9 +372,8 @@ namespace TheGrandMigrator
                             Trace.WriteLine($"\tMigration of the member with ID {secondChannelMember} of the channel {channel.UniqueName} succeeded.");
 							result.EntitiesSucceeded.AddRange(memberMigrationResult.EntitiesSucceeded);
                         }
-
-						channelMembersIds.Add(secondChannelMember);
-					}
+                    }
+                    channelMembersIds.Add(secondChannelMember);
 				}
 
 				var channelMigrationResult =  await MigrateChannelWithMetadataAsync(channel, channelMembersIds.ToArray());

@@ -2,7 +2,7 @@
 {
 	public static class Configuration
 	{
-		public const string BasePath = @"C:\\Configurations";
+		public const string BasePath = @"Configurations";
 		public const string FileName = "twilioConfiguration.json";
 	}
 }

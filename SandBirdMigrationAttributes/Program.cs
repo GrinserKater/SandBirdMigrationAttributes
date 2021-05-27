@@ -64,7 +64,7 @@ namespace SandBirdMigrationAttributes
 				Trace.WriteLine(
 					$"\tTotal fetched from Twilio: {migrationResult.FetchedCount}; migrated: {migrationResult.SuccessCount}; skipped: {migrationResult.SkippedCount}; failed {migrationResult.FailedCount}.");
 
-				if (migrationResult.FailedCount == 0) return;
+				if (migrationResult.FailedCount == 0 && migrationResult.FetchedCount > 0) return;
 
                 Trace.WriteLine("The following messages were recorded during the migration:");
 				Trace.WriteLine($"\t{migrationResult.Message}");

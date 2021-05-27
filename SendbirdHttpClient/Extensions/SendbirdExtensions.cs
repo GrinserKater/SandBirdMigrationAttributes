@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.IO;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SendbirdHttpClient.Abstractions;
 using SendbirdHttpClient.Configuration.Http;
@@ -11,8 +12,8 @@ namespace SendbirdHttpClient.Extensions
 		public static IServiceCollection AddSendbirdHttpClient(this IServiceCollection services)
 		{
 			IConfigurationRoot configuration = new ConfigurationBuilder()
-				.SetBasePath(Constants.Configuration.BasePath)
-				.AddJsonFile(Constants.Configuration.FileName)
+                .SetBasePath(Directory.GetCurrentDirectory())
+				.AddJsonFile($"{Constants.Configuration.BasePath}\\{Constants.Configuration.FileName}")
 				.Build();
 
 			services
