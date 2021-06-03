@@ -120,6 +120,7 @@ namespace TwilioHttpClient
 
 				var result = channelResources.Select(cr => new Channel
 				{
+					Sid = cr.Sid,
 					UniqueName = cr.UniqueName,
 					FriendlyName = cr.FriendlyName,
 					MembersCount = cr.MembersCount ?? 0,
@@ -150,6 +151,7 @@ namespace TwilioHttpClient
 
 				var payload = new Channel
 				{
+					Sid = fetchResult.Sid,
 					UniqueName = fetchResult.UniqueName,
 					FriendlyName = fetchResult.FriendlyName,
 					MembersCount = fetchResult.MembersCount ?? 0,

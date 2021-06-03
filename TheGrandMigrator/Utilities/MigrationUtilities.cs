@@ -120,7 +120,7 @@ namespace TheGrandMigrator.Utilities
 
 			var metadataRequestBody = new MetadataUpsertRequest<ChannelMetadata>
 			{
-				Metadata = new ChannelMetadata { ListingId = channel.Attributes.ListingId.ToString() }
+				Metadata = new ChannelMetadata { ListingId = channel.Attributes.ListingId.ToString(), ExternalSid = channel.Sid }
 			};
 
 			if (channelManipulationResult.IsSuccess)
@@ -159,7 +159,8 @@ namespace TheGrandMigrator.Utilities
 				return OperationResult.Failure;
 			}
 
-			if (channelManipulationResult.Payload.Freeze == channelUpsertRequest.Freeze) return OperationResult.Continuation; /* Now we need to try to update or create metadata. */
+			if (channelManipulationResult.Payload.Freeze == (channel.Attributes.IsBlocked || channel.Attributes.IsListingBlocked))
+				return OperationResult.Continuation; /* Now we need to try to update or create metadata. */
 			
 			HttpClientResult<ChannelResource> alterFreezeResult =
 				await sendbirdClient.AlterChannelFreezeAsync(channelUpsertRequest.ChannelUrl, channelUpsertRequest.Freeze);
@@ -171,7 +172,7 @@ namespace TheGrandMigrator.Utilities
 			// We deliberately proceed with migration here, even if we failed to freeze the channel.
 
 			return OperationResult.Continuation; /* Now we need to try to update or create metadata. */
-			}
+		}
 
 		public static async Task<OperationResult> TryUpdateOrCreateChannelMetadataAsync(ISendbirdHttpClient sendbirdClient, Channel channel,
 			/* Mutable */ MigrationResult<IResource> result)
@@ -184,15 +185,14 @@ namespace TheGrandMigrator.Utilities
 
 			var metadataRequestBody = new MetadataUpsertRequest<ChannelMetadata>
 			{
-				Metadata = new ChannelMetadata { ListingId = channel.Attributes.ListingId.ToString() }
+				Metadata = new ChannelMetadata { ListingId = channel.Attributes.ListingId.ToString(), ExternalSid = channel.Sid }
 			};
 
 			HttpClientResult<ChannelMetadata> updateMetadataResult = await sendbirdClient.UpdateChannelMetadataAsync(channelUrl, metadataRequestBody);
 
 			if (!updateMetadataResult.IsSuccess && updateMetadataResult.HttpStatusCode != HttpStatusCode.NotFound)
 			{
-				MigrationUtilities.ProcessAndLogFailure(
-					$"\tFailed to update metadata for channel {channelUrl} on SB side. Reason: {updateMetadataResult.FormattedMessage} .",
+				ProcessAndLogFailure($"\tFailed to update metadata for channel {channelUrl} on SB side. Reason: {updateMetadataResult.FormattedMessage}.",
 					channel, result);
 				return OperationResult.Failure;
 			}
