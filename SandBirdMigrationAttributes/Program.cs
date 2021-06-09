@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TheGrandMigrator.Abstractions;
 using CommandManager;
 using CommandManager.Enums;
+using Common.Extensions;
 using SandBirdMigrationAttributes.Logging;
 using TwilioHttpClient.Abstractions;
 
@@ -60,7 +61,7 @@ namespace SandBirdMigrationAttributes
 				sw.Stop();
 
 				LoggingUtilities.WriteMigrationResultLogFiles(migrationResult);
-				Trace.WriteLine($"Migration finished. Time elapsed: {sw.Elapsed.TotalMinutes} mins. Results:");
+				Trace.WriteLine($"Migration finished. Time elapsed: {sw.Elapsed.AsString()}. Results:");
 				Trace.WriteLine(
 					$"\tTotal fetched from Twilio: {migrationResult.FetchedCount}; migrated: {migrationResult.SuccessCount}; skipped: {migrationResult.SkippedCount}; failed {migrationResult.FailedCount}.");
 
