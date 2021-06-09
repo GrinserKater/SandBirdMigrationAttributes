@@ -60,7 +60,7 @@ namespace SandBirdMigrationAttributes
 				sw.Stop();
 
 				LoggingUtilities.WriteMigrationResultLogFiles(migrationResult);
-				Trace.WriteLine($"Migration finished. Time elapsed: {sw.Elapsed.Seconds}s. Results:");
+				Trace.WriteLine($"Migration finished. Time elapsed: {sw.Elapsed.TotalMinutes} mins. Results:");
 				Trace.WriteLine(
 					$"\tTotal fetched from Twilio: {migrationResult.FetchedCount}; migrated: {migrationResult.SuccessCount}; skipped: {migrationResult.SkippedCount}; failed {migrationResult.FailedCount}.");
 
