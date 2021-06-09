@@ -185,31 +185,20 @@ namespace TheGrandMigrator.Utilities
 
 			var metadataRequestBody = new MetadataUpsertRequest<ChannelMetadata>
 			{
-				Metadata = new ChannelMetadata { ListingId = channel.Attributes.ListingId.ToString(), ExternalSid = channel.Sid }
+				Metadata = new ChannelMetadata { ListingId = channel.Attributes.ListingId.ToString(), ExternalSid = channel.Sid },
+				Upsert = true
 			};
 
 			HttpClientResult<ChannelMetadata> updateMetadataResult = await sendbirdClient.UpdateChannelMetadataAsync(channelUrl, metadataRequestBody);
 
-			if (!updateMetadataResult.IsSuccess && updateMetadataResult.HttpStatusCode != HttpStatusCode.NotFound)
+			if (!updateMetadataResult.IsSuccess)
 			{
 				ProcessAndLogFailure($"\tFailed to update metadata for channel {channelUrl} on SB side. Reason: {updateMetadataResult.FormattedMessage}.",
 					channel, result);
 				return OperationResult.Failure;
 			}
 
-			if (updateMetadataResult.HttpStatusCode != HttpStatusCode.NotFound) return OperationResult.Success;
-
-			Trace.WriteLine($"\tMetadata for the channel {channel.FriendlyName} does not exist on SB side. Creating...");
-
-			HttpClientResult<ChannelMetadata> createMetadataResult = await sendbirdClient.CreateChannelMetadataAsync(channelUrl, metadataRequestBody);
-
-			if (createMetadataResult.IsSuccess) return OperationResult.Success;
-
-			ProcessAndLogFailure(
-				$"\tFailed to create metadata for the channel {channel.FriendlyName} on SB side. Reason: {createMetadataResult.FormattedMessage}.",
-				channel, result);
-
-			return OperationResult.Failure;
+			return OperationResult.Success;
 		}
 	}
 }
