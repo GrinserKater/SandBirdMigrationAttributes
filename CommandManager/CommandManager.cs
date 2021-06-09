@@ -53,8 +53,13 @@ namespace CommandManager
 			}
 
             if (options.MigrationSubject == MigrationSubject.Channel)
-                options.ChannelUniqueIdentifier = ExtractNextPositionStringParameter(arguments, MigrationSubject.Channel.ToString());
+            {
+				string possibleChannelIdentifier = ExtractNextPositionStringParameter(arguments, MigrationSubject.Channel.ToString());
 
+				options.ChannelUniqueIdentifier = ValidateAndParseChannelUniqueIdentifier(possibleChannelIdentifier, '-', out _) ?
+					possibleChannelIdentifier : null;
+			}
+            
             options.DateBefore = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.BeforeArgument);
             options.DateAfter = ExtractNextPositionDateTimeParameter(arguments, Constants.CommandLineParameters.AfterArgument);
             if (options.DateBefore.HasValue && options.DateAfter.HasValue && options.DateBefore == options.DateAfter)
@@ -92,8 +97,20 @@ namespace CommandManager
         private static string ExtractNextPositionStringParameter(string[] arguments, string parameterName)
         {
             string result = arguments.ElementAtOrDefault(Array.IndexOf(arguments, parameterName.ToLower()) + 1);
-			if (String.IsNullOrWhiteSpace(result) || result.StartsWith("--")) return String.Empty;
+			if (String.IsNullOrWhiteSpace(result)) return String.Empty;
 			return result;
         }
-	}
+
+        private static bool ValidateAndParseChannelUniqueIdentifier(string uniqueIdentifier, char separator, out int[] parsedValues)
+        {
+            parsedValues = new int[3];
+            if (String.IsNullOrWhiteSpace(uniqueIdentifier) || uniqueIdentifier.Count(c => c == separator) != 2) return false;
+
+            int[] ids = uniqueIdentifier.Split(separator).Select(id => { Int32.TryParse(id, out int idAsInt); return idAsInt; }).ToArray();
+            if (ids.Any(id => id == 0)) return false;
+
+            Array.Copy(ids, parsedValues, ids.Length);
+            return true;
+        }
+    }
 }

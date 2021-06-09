@@ -171,3 +171,4 @@ $RECYCLE.BIN/
 # VS2012 upgrade tmp files
 /_Deploy
 /.vs
+/.idea
