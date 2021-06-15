@@ -35,27 +35,28 @@ namespace TheGrandMigrator
 			if(limit > 0) migrateNoMoreThan = limit;
             int entitiesPerPage = pageSize == 0 ? Migration.DefaultPageSize : pageSize;
 
+            var result = new MigrationResult<IResource>();
 			Trace.WriteLine("Fetching users from Twilio in a bulk mode. This might take a couple of minutes...");
-			HttpClientResult<IEnumerable<User>> twilioUsersResult = _twilioClient.UserBulkRetrieve(entitiesPerPage, migrateNoMoreThan);
+			try
+			{
+				IAsyncEnumerable<User> twilioUsersResult = _twilioClient.UserBulkRetrieveAsync(entitiesPerPage, migrateNoMoreThan);
 
-			var result = new MigrationResult<IResource>();
-
-			if (!twilioUsersResult.IsSuccess)
+				// TODO: filtering can be done here based on the dateBefore and dateAfter parameter.
+				// This will reduce the amount of iterations, but the logging must be adjusted appropriately. 
+				await foreach (User user in twilioUsersResult)
+				{
+					result.EntitiesFetched.Add(user);
+					var userMigrationResult = await MigrateFetchedUserAsync(user, false, dateBefore, dateAfter);
+					CopyMigrationResult(userMigrationResult, result, null);
+				}
+			}
+			catch (Exception ex)
 			{
 				result.Message = "Migration of users attributes failed. See ErrorMessages for details.";
-				result.ErrorMessages.Add($"Message: [{twilioUsersResult.FormattedMessage}]; HTTP status code: [{twilioUsersResult.HttpStatusCode}]");
+				result.ErrorMessages.Add($"Message: [{ex.Message}].");
 				return result;
 			}
-
-			// TODO: filtering can be done here based on the dateBefore and dateAfter parameter.
-			// This will reduce the amount of iterations, but the logging must be adjusted appropriately. 
-			foreach (User user in twilioUsersResult.Payload)
-			{
-				result.EntitiesFetched.Add(user);
-                var userMigrationResult = await MigrateFetchedUserAsync(user, false, dateBefore, dateAfter);
-				CopyMigrationResult(userMigrationResult, result, null);
-			}
-
+			
             result.Message = result.FailedCount == 0 ?
                 $"Migration finished. Totally migrated {result.SuccessCount} users' attributes.":
                 $"Not all users' attributes migrated successfully. {result.FailedCount} failed, {result.SuccessCount} succeeded. See ErrorMessages for details.";
@@ -67,31 +68,32 @@ namespace TheGrandMigrator
 			int? migrateNoMoreThan = null;
 			if(limit > 0) migrateNoMoreThan = limit;
             int entitiesPerPage = pageSize == 0 ? Migration.DefaultPageSize : pageSize;
-
+            
+            var result = new MigrationResult<IResource>();
             Trace.WriteLine("Fetching channels from Twilio in a bulk mode. This might take a couple of minutes...");
-			HttpClientResult<List<Channel>> twilioChannelResult = await _twilioClient.ChannelBulkRetrieveAsync(entitiesPerPage, migrateNoMoreThan);
-
-			var result = new MigrationResult<IResource>();
-
-			if (!twilioChannelResult.IsSuccess)
-			{
-				result.Message = "Migration of channels' attributes failed. See ErrorMessages for details.";
-				result.ErrorMessages.Add($"Message: [{twilioChannelResult.FormattedMessage}]; HTTP status code: [{twilioChannelResult.HttpStatusCode}]");
-				Debug.WriteLine(result.ErrorMessages.Last());
-				return result;
-			}
-
-            // TODO: filtering can be done here based on the dateBefore and dateAfter parameter, and on member count.
-            // This will reduce the amount of iterations, but the logging must be adjusted appropriately. 
-			foreach (Channel channel in twilioChannelResult.Payload)
+            try
             {
-                result.EntitiesFetched.Add(channel);
+	            IAsyncEnumerable<Channel> twilioChannelResult = _twilioClient.ChannelBulkRetrieveAsync(entitiesPerPage, migrateNoMoreThan);
 
-				MigrationResult<IResource> singleChannelMigrationResult = await MigrateSingleChannelAttributesAsync(channel, dateBefore, dateAfter);
-				CopyMigrationResult(singleChannelMigrationResult, result, null);
+	            // TODO: filtering can be done here based on the dateBefore and dateAfter parameter, and on member count.
+	            // This will reduce the amount of iterations, but the logging must be adjusted appropriately. 
+	            await foreach (Channel channel in twilioChannelResult)
+	            {
+		            result.EntitiesFetched.Add(channel);
+
+		            MigrationResult<IResource> singleChannelMigrationResult = await MigrateSingleChannelAttributesAsync(channel, dateBefore, dateAfter);
+		            CopyMigrationResult(singleChannelMigrationResult, result, null);
+	            }
             }
-
-    		result.Message = result.FailedCount == 0 ?
+            catch (Exception ex)
+            {
+	            result.Message = "Migration of channels' attributes failed. See ErrorMessages for details.";
+	            result.ErrorMessages.Add($"Message: [{ex.Message}].");
+	            Debug.WriteLine(result.ErrorMessages.Last());
+	            return result;
+            }
+            
+            result.Message = result.FailedCount == 0 ?
 				$"Migration finished. Totally migrated {result.SuccessCount} channels' attributes.":
 				$"Not all channels' attributes migrated successfully. {result.FailedCount} failed, {result.SuccessCount} succeeded. See ErrorMessages for details.";
 			return result;
@@ -302,89 +304,90 @@ namespace TheGrandMigrator
 			var result = new MigrationResult<IResource>();
 
 			// Unfortunately, smart Twilio engineers decided to return absolutely different object as UserChannelResource rather than ChannelResource.
-			HttpClientResult<List<UserChannel>> userChannelsFetchResult = await _twilioClient.UserChannelsBulkRetrieveAsync(userId, entitiesPerPage, migrateNoMoreThan);
-			if (!userChannelsFetchResult.IsSuccess)
+			IAsyncEnumerable<UserChannel> userChannelsFetchResult = _twilioClient.UserChannelsBulkRetrieveAsync(userId, entitiesPerPage, migrateNoMoreThan);
+			try
+			{
+				// This piece of code might seem very similar to the one in MigrateChannelsAttributesAsync,
+				// but this one is slightly optimised for the single user case.
+				await foreach (UserChannel userChannel in userChannelsFetchResult)
+				{
+					HttpClientResult<Channel> channelFetchResult = await _twilioClient.ChannelFetchAsync(userChannel.ChannelSid);
+					if (!channelFetchResult.IsSuccess)
+					{
+						result.ErrorMessages.Add(
+							$"Failed to retrieve channel with SID {userChannel.ChannelSid}; reason: {channelFetchResult.FormattedMessage}; HTTP status code: {channelFetchResult.HttpStatusCode}.");
+						Debug.WriteLine(result.ErrorMessages.Last());
+						continue;
+					}
+
+					var channel = channelFetchResult.Payload;
+					result.EntitiesFetched.Add(channel);
+					if(!IsIncludedByDate(channel.DateUpdated, dateBefore, dateAfter))
+					{
+						Trace.WriteLine($"\tChannel {channel.UniqueName} skipped. Last updated on {channel.DateUpdated}. Requested time period: {(dateBefore == null ? "" : $"before {dateBefore}")} {(dateAfter == null ? "" : $"after {dateAfter}")}.");
+						result.EntitiesSkipped.Add(channel);
+						continue;
+					}
+
+					List<int> channelMembersIds = new List<int>{ Int32.Parse(userId) };
+
+					if (channel.MembersCount == 2)
+					{
+						int secondChannelMember = Int32.Parse(channel.UniqueName.Split('-').Skip(1).First(id => channelMembersIds.All(cmi => cmi != Int32.Parse(id))));
+
+						// Checking if the channel member exists as SB users. If not, we'll try to migrate them. If migration fails we'll still proceed.
+						// In this case channel will simply be created with the members that already exist.
+						HttpClientResult<int[]> absentMembersResult = await _sendbirdClient.WhoIsAbsentAsync(new[] { secondChannelMember });
+						if (absentMembersResult.IsSuccess && absentMembersResult.Payload.Length > 0)
+						{
+							Trace.WriteLine($"Migrating the nonexistent member with ID {secondChannelMember} of the channel {channel.UniqueName}...");
+							// Channel's member will be migrated disregarding the age. 
+							var memberMigrationResult = await MigrateSingleUserAttributesAsync(secondChannelMember.ToString(), true, null, null);
+							if (memberMigrationResult.FetchedCount == 0)
+							{
+								Trace.WriteLine(
+									$"\tMigration of the member with ID {secondChannelMember} of the channel {channel.UniqueName} failed. Reason: {memberMigrationResult.Message}.");
+								result.ErrorMessages.AddRange(memberMigrationResult.ErrorMessages);
+							}
+
+							if (memberMigrationResult.FailedCount > 0)
+							{
+								Trace.WriteLine(
+									$"\tMigration of the member with ID {secondChannelMember} of the channel {channel.UniqueName} failed. Reason: {memberMigrationResult.Message}.");
+								result.EntitiesFailed.AddRange(memberMigrationResult.EntitiesFailed);
+								result.ErrorMessages.AddRange(memberMigrationResult.ErrorMessages);
+							}
+							else
+							{
+								Trace.WriteLine($"\tMigration of the member with ID {secondChannelMember} of the channel {channel.UniqueName} succeeded.");
+								result.EntitiesSucceeded.AddRange(memberMigrationResult.EntitiesSucceeded);
+							}
+						}
+						channelMembersIds.Add(secondChannelMember);
+					}
+
+					var channelMigrationResult =  await MigrateChannelWithMetadataAsync(channel, channelMembersIds.ToArray());
+					CopyMigrationResult(channelMigrationResult, result, null);
+				}
+			}
+			catch (Exception ex)
 			{
 				result.Message = $"Migration of account's attributes for the ID {userId} failed. See ErrorMessages for details.";
-				result.ErrorMessages.Add($"Message: [{userChannelsFetchResult.FormattedMessage}]; HTTP status code: [{userChannelsFetchResult.HttpStatusCode}]");
+				result.ErrorMessages.Add($"Message: [{ex.Message}].");
 				Debug.WriteLine(result.ErrorMessages.Last());
 				return result;
 			}
 
-			if (userChannelsFetchResult.Payload.Count == 0)
+			if (result.FetchedCount == 0)
 			{
 				result.Message = $"No channels attributes for the account ID {userId} to migrate.";
 				return result;
 			}
-
-			// This piece of code might seem very similar to the one in MigrateChannelsAttributesAsync,
-			// but this one is slightly optimised for the single user case.
-			foreach (UserChannel userChannel in userChannelsFetchResult.Payload)
-			{
-				HttpClientResult<Channel> channelFetchResult = await _twilioClient.ChannelFetchAsync(userChannel.ChannelSid);
-				if (!channelFetchResult.IsSuccess)
-				{
-					result.ErrorMessages.Add(
-						$"Failed to retrieve channel with SID {userChannel.ChannelSid}; reason: {channelFetchResult.FormattedMessage}; HTTP status code: {channelFetchResult.HttpStatusCode}.");
-					Debug.WriteLine(result.ErrorMessages.Last());
-					continue;
-				}
-
-				var channel = channelFetchResult.Payload;
-                result.EntitiesFetched.Add(channel);
-				if(!IsIncludedByDate(channel.DateUpdated, dateBefore, dateAfter))
-                {
-					Trace.WriteLine($"\tChannel {channel.UniqueName} skipped. Last updated on {channel.DateUpdated}. Requested time period: {(dateBefore == null ? "" : $"before {dateBefore}")} {(dateAfter == null ? "" : $"after {dateAfter}")}.");
-					result.EntitiesSkipped.Add(channel);
-					continue;
-				}
-
-				List<int> channelMembersIds = new List<int>{ Int32.Parse(userId) };
-
-				if (channel.MembersCount == 2)
-				{
-					int secondChannelMember = Int32.Parse(channel.UniqueName.Split('-').Skip(1).First(id => channelMembersIds.All(cmi => cmi != Int32.Parse(id))));
-
-					// Checking if the channel member exists as SB users. If not, we'll try to migrate them. If migration fails we'll still proceed.
-					// In this case channel will simply be created with the members that already exist.
-					HttpClientResult<int[]> absentMembersResult = await _sendbirdClient.WhoIsAbsentAsync(new[] { secondChannelMember });
-					if (absentMembersResult.IsSuccess && absentMembersResult.Payload.Length > 0)
-					{
-						Trace.WriteLine($"Migrating the nonexistent member with ID {secondChannelMember} of the channel {channel.UniqueName}...");
-						// Channel's member will be migrated disregarding the age. 
-						var memberMigrationResult = await MigrateSingleUserAttributesAsync(secondChannelMember.ToString(), true, null, null);
-                        if (memberMigrationResult.FetchedCount == 0)
-                        {
-                            Trace.WriteLine(
-                                $"\tMigration of the member with ID {secondChannelMember} of the channel {channel.UniqueName} failed. Reason: {memberMigrationResult.Message}.");
-                            result.ErrorMessages.AddRange(memberMigrationResult.ErrorMessages);
-                        }
-
-						if (memberMigrationResult.FailedCount > 0)
-						{
-							Trace.WriteLine(
-								$"\tMigration of the member with ID {secondChannelMember} of the channel {channel.UniqueName} failed. Reason: {memberMigrationResult.Message}.");
-							result.EntitiesFailed.AddRange(memberMigrationResult.EntitiesFailed);
-                            result.ErrorMessages.AddRange(memberMigrationResult.ErrorMessages);
-						}
-                        else
-                        {
-                            Trace.WriteLine($"\tMigration of the member with ID {secondChannelMember} of the channel {channel.UniqueName} succeeded.");
-							result.EntitiesSucceeded.AddRange(memberMigrationResult.EntitiesSucceeded);
-                        }
-                    }
-                    channelMembersIds.Add(secondChannelMember);
-				}
-
-				var channelMigrationResult =  await MigrateChannelWithMetadataAsync(channel, channelMembersIds.ToArray());
-				CopyMigrationResult(channelMigrationResult, result, null);
-            }
-
-			if (result.FailedCount > 0)
-				result.Message =
-					$"Not all channels' attributes migrated successfully. {result.FailedCount} failed, {result.SuccessCount} succeeded. See ErrorMessages for details.";
-
-			result.Message = $"Migration finished. Totally migrated {result.SuccessCount} channels' attributes.";
+			
+			result.Message = result.FailedCount > 0 ?
+				$"Not all channels' attributes migrated successfully. {result.FailedCount} failed, {result.SuccessCount} succeeded. See ErrorMessages for details." :
+				$"Migration finished. Totally migrated {result.SuccessCount} channels' attributes.";
+			
 			return result;
 		}
 

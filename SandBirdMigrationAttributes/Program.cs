@@ -14,7 +14,7 @@ namespace SandBirdMigrationAttributes
 {
     class Program
     {
-        private static string _logFileName = $"{LoggingUtilities.LogFolder}\\Migration_{{0}}_log_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.txt";
+        private static string _logFileName = $"{LoggingUtilities.LogFolder}/Migration_{{0}}_log_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.txt";
 
         public static async Task Main(string[] args)
         {

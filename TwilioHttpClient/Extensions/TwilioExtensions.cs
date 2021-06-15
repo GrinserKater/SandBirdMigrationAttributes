@@ -13,7 +13,7 @@ namespace TwilioHttpClient.Extensions
 		{
 			var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile($"{Constants.Configuration.BasePath}\\{Constants.Configuration.FileName}")
+                .AddJsonFile($"{Constants.Configuration.BasePath}/{Constants.Configuration.FileName}")
 				.Build();
 
 			services
