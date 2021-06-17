@@ -91,10 +91,10 @@ namespace TheGrandMigrator.Utilities
 				ChannelUrl = ConvertToChannelUrl(channel.UniqueName),
                 CreatedBy  = channel.Attributes.BuyerId,
 				Name       = channel.FriendlyName,
-				CoverUrl   = channel.Attributes.Listing?.MainPicture ?? String.Empty
+				CoverUrl   = channel.Attributes.Listing?.MainPicture ?? String.Empty,
+				Freeze	   = channel.Attributes.IsBlocked || channel.Attributes.IsListingBlocked,
+				UserIds    = channelMembersIds ?? Array.Empty<int>()
 			};
-
-			channelUpsertRequest.UserIds = channelMembersIds ?? Array.Empty<int>();
 			channelUpsertRequest.Data = BuildChannelData(channel);
 
 			return channelUpsertRequest;
@@ -125,7 +125,7 @@ namespace TheGrandMigrator.Utilities
 
 			if (channelManipulationResult.IsSuccess)
 			{
-				if (channel.Attributes.IsBlocked || channel.Attributes.IsListingBlocked)
+				if (channelUpsertRequest.Freeze)
 				{
 					HttpClientResult<ChannelResource> freezeResult = await sendbirdClient.FreezeChannelAsync(channelUpsertRequest.ChannelUrl);
 
@@ -159,7 +159,7 @@ namespace TheGrandMigrator.Utilities
 				return OperationResult.Failure;
 			}
 
-			if (channelManipulationResult.Payload.Freeze == (channel.Attributes.IsBlocked || channel.Attributes.IsListingBlocked))
+			if (channelManipulationResult.Payload.Freeze == channelUpsertRequest.Freeze)
 				return OperationResult.Continuation; /* Now we need to try to update or create metadata. */
 			
 			HttpClientResult<ChannelResource> alterFreezeResult =
