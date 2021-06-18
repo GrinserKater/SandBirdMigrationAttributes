@@ -70,31 +70,27 @@ namespace TwilioHttpClient
 			}
 		}
 
-		public HttpClientResult<IEnumerable<User>> UserBulkRetrieve(int pageSize, int? limit = null)
+		public IEnumerable<User> UserBulkRetrieve(int pageSize, int? limit = null)
 		{
 			int currentPageSize = pageSize > 0 ? pageSize : DefaultPageSize;
 
-			try
-			{
-				ResourceSet<UserResource> userResources = UserResource.Read(_chatServiceId, currentPageSize, limit, _twilioRestClient);
+			ResourceSet<UserResource> userResources = UserResource.Read(_chatServiceId, currentPageSize, limit, _twilioRestClient);
 
-				var result = userResources.Select(ur => new User
+			foreach (UserResource resource in userResources)
+			{
+				var user = new User
 				{
-					Id           = ur.Identity,
-					FriendlyName = ur.FriendlyName,
-					DateCreated  = ur.DateCreated,
-					DateUpdated  = ur.DateUpdated,
-					Attributes   = JsonSerializer.Deserialize<UserAttributes>(ur.Attributes, new JsonSerializerOptions
+					Id           = resource.Identity,
+					FriendlyName = resource.FriendlyName,
+					DateCreated  = resource.DateCreated,
+					DateUpdated  = resource.DateUpdated,
+					Attributes   = JsonSerializer.Deserialize<UserAttributes>(resource.Attributes, new JsonSerializerOptions
 					{
 						PropertyNameCaseInsensitive = true
 					})
-				});
+				};
 
-				return new HttpClientResult<IEnumerable<User>>(HttpStatusCode.OK, result);
-			}
-			catch (Exception ex)
-			{
-				return ProcessException<IEnumerable<User>>(ex, nameof(UserBulkRetrieve));
+				yield return user;
 			}
 		}
 
@@ -110,6 +106,37 @@ namespace TwilioHttpClient
 			};
 
 			ResourceSet<ChannelResource> channelResources = await ChannelResource.ReadAsync(options, _twilioRestClient).ConfigureAwait(false);
+			foreach (var resource in channelResources)
+			{
+				var channel = new Channel
+				{
+					Sid = resource.Sid,
+					UniqueName = resource.UniqueName,
+					FriendlyName = resource.FriendlyName,
+					MembersCount = resource.MembersCount ?? 0,
+					DateCreated = resource.DateCreated,
+					DateUpdated = resource.DateUpdated,
+					Attributes = JsonSerializer.Deserialize<ChannelAttributes>(resource.Attributes, new JsonSerializerOptions
+					{
+						PropertyNameCaseInsensitive = true
+					})
+				};
+				yield return channel;
+			}
+		}
+		
+		public IEnumerable<Channel> ChannelBulkRetrieve(int pageSize, int? limit = null)
+		{
+			int currentPageSize = pageSize > 0 ? pageSize : DefaultPageSize;
+			
+			var options = new ReadChannelOptions(_chatServiceId)
+			{
+				Limit = limit,
+				PageSize = currentPageSize,
+				Type = new List<ChannelResource.ChannelTypeEnum> { ChannelResource.ChannelTypeEnum.Private }
+			};
+
+			ResourceSet<ChannelResource> channelResources = ChannelResource.Read(options, _twilioRestClient);
 			foreach (var resource in channelResources)
 			{
 				var channel = new Channel
@@ -213,6 +240,26 @@ namespace TwilioHttpClient
 				Limit = limit
 			};
 			ResourceSet<UserChannelResource> userChannelResources = await UserChannelResource.ReadAsync(options, _twilioRestClient);
+			foreach (UserChannelResource resource in userChannelResources)
+			{
+				var userChannel = new UserChannel { ChannelSid = resource.ChannelSid };
+				yield return userChannel;
+			}
+		}
+		
+		public IEnumerable<UserChannel> UserChannelsBulkRetrieve(string userId, int pageSize, int? limit = null)
+		{
+			if (!Int32.TryParse(userId, out int userIdAsInt) || userIdAsInt <= 0)
+				yield break;
+
+			int currentPageSize = pageSize > 0 ? pageSize : DefaultPageSize;
+
+			var options = new ReadUserChannelOptions(_chatServiceId, userId)
+			{
+				PageSize = currentPageSize,
+				Limit = limit
+			};
+			ResourceSet<UserChannelResource> userChannelResources = UserChannelResource.Read(options, _twilioRestClient);
 			foreach (UserChannelResource resource in userChannelResources)
 			{
 				var userChannel = new UserChannel { ChannelSid = resource.ChannelSid };

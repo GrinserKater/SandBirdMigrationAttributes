@@ -39,11 +39,11 @@ namespace TheGrandMigrator
 			Trace.WriteLine("Fetching users from Twilio in a bulk mode. This might take a couple of minutes...");
 			try
 			{
-				IAsyncEnumerable<User> twilioUsersResult = _twilioClient.UserBulkRetrieveAsync(entitiesPerPage, migrateNoMoreThan);
+				IEnumerable<User> twilioUsersResult = _twilioClient.UserBulkRetrieve(entitiesPerPage, migrateNoMoreThan);
 
 				// TODO: filtering can be done here based on the dateBefore and dateAfter parameter.
 				// This will reduce the amount of iterations, but the logging must be adjusted appropriately. 
-				await foreach (User user in twilioUsersResult)
+				foreach (User user in twilioUsersResult)
 				{
 					result.EntitiesFetched.Add(user);
 					var userMigrationResult = await MigrateFetchedUserAsync(user, false, dateBefore, dateAfter);
@@ -73,12 +73,13 @@ namespace TheGrandMigrator
             Trace.WriteLine("Fetching channels from Twilio in a bulk mode. This might take a couple of minutes...");
             try
             {
-	            IAsyncEnumerable<Channel> twilioChannelResult = _twilioClient.ChannelBulkRetrieveAsync(entitiesPerPage, migrateNoMoreThan);
+	            IEnumerable<Channel> twilioChannelResult = _twilioClient.ChannelBulkRetrieve(entitiesPerPage, migrateNoMoreThan);
 
 	            // TODO: filtering can be done here based on the dateBefore and dateAfter parameter, and on member count.
 	            // This will reduce the amount of iterations, but the logging must be adjusted appropriately. 
-	            await foreach (Channel channel in twilioChannelResult)
+	            foreach (Channel channel in twilioChannelResult)
 	            {
+		            Trace.WriteLine($"Fetched the channel {channel.UniqueName}.");
 		            result.EntitiesFetched.Add(channel);
 
 		            MigrationResult<IResource> singleChannelMigrationResult = await MigrateSingleChannelAttributesAsync(channel, dateBefore, dateAfter);
