@@ -1,31 +1,40 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using TheGrandMigrator.Abstractions;
 
 namespace TheGrandMigrator.Models
 {
-	public class MigrationResult<T> : IMigrationResult<T>
-	{
-		public bool IsFailure => ErrorMessages.Count > 0;
-		public int FetchedCount => EntitiesFetched.Count; 
-		public int SuccessCount => EntitiesSucceeded.Count;
-		public int SkippedCount => EntitiesSkipped.Count;
-		public int FailedCount => EntitiesFailed.Count;
+    public class MigrationResult<T> : IMigrationResult<T>
+    {
+        public int FetchedCount { get; private set; }
+        public int SuccessCount { get; private set; }
+        public int SkippedCount { get; private set; }
+        public int FailedCount { get; private set; }
+        public List<string> ErrorMessages { get; }
+        public string Message { get; set; }
 
-		public List<T> EntitiesFetched { get; }
-		public List<T> EntitiesSucceeded { get; }
-		public List<T> EntitiesFailed { get; }
-		public List<T> EntitiesSkipped { get; }
-		public List<string> ErrorMessages { get; }
+        public void IncreaseFetched()
+        {
+            FetchedCount++;
+        }
+        
+        public void IncreaseSuccess()
+        {
+            SuccessCount++;
+        }
+        
+        public void IncreaseSkipped()
+        {
+            SkippedCount++;
+        }
+        
+        public void IncreaseFailed()
+        {
+            FailedCount++;
+        }
 
-		public string Message { get; set; }
-
-		public MigrationResult()
-		{
-			EntitiesFetched   = new List<T>();
-			EntitiesSucceeded = new List<T>();
-			EntitiesFailed    = new List<T>();
-			EntitiesSkipped   = new List<T>();
-			ErrorMessages     = new List<string>();
-		}
-	}
+        public MigrationResult()
+        {
+            ErrorMessages = new List<string>();
+        }
+    }
 }

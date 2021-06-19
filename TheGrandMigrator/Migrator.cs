@@ -29,7 +29,7 @@ namespace TheGrandMigrator
 			_sendbirdClient = sendbirdClient ?? throw new ArgumentNullException(nameof(sendbirdClient));
         }
 
-		public async Task<MigrationResult<IResource>> MigrateUsersAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, int limit, int pageSize)
+		public async Task<IMigrationResult<IResource>> MigrateUsersAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, int limit, int pageSize)
 		{
 			int? migrateNoMoreThan = null;
 			if(limit > 0) migrateNoMoreThan = limit;
@@ -63,7 +63,7 @@ namespace TheGrandMigrator
 			return result;
 		}
 
-		public async Task<MigrationResult<IResource>> MigrateChannelsAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, int limit, int pageSize)
+		public async Task<IMigrationResult<IResource>> MigrateChannelsAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, int limit, int pageSize)
 		{
 			int? migrateNoMoreThan = null;
 			if(limit > 0) migrateNoMoreThan = limit;
@@ -100,7 +100,7 @@ namespace TheGrandMigrator
 			return result;
 		}
 
-		public async Task<MigrationResult<IResource>> MigrateSingleAccountAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, int accountUserId, int limit, int pageSize)
+		public async Task<IMigrationResult<IResource>> MigrateSingleAccountAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, int accountUserId, int limit, int pageSize)
         {
 			var result = new MigrationResult<IResource>();
 
@@ -136,9 +136,10 @@ namespace TheGrandMigrator
             return result;
         }
 
-        public async Task<MigrationResult<IResource>> MigrateSingleChannelAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, string channelUniqueIdentifier)
+        public async Task<IMigrationResult<IResource>> MigrateSingleChannelAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, string channelUniqueIdentifier)
         {
-            Trace.WriteLine($"Fetching channel {channelUniqueIdentifier} from Twilio...");
+	        IMigrationResult <IResource> rslt = new ShallowMigrationResult<IResource>();
+	        Trace.WriteLine($"Fetching channel {channelUniqueIdentifier} from Twilio...");
 			HttpClientResult<Channel> twilioChannelResult = await _twilioClient.ChannelFetchAsync(channelUniqueIdentifier);
 
             var result = new MigrationResult<IResource>();
@@ -170,7 +171,7 @@ namespace TheGrandMigrator
             return result;
         }
 
-		private async Task<MigrationResult<IResource>> MigrateSingleUserAttributesAsync(string userId, bool blockExistentUsersOnly, DateTime? dateBefore, DateTime? dateAfter)
+		private async Task<IMigrationResult<IResource>> MigrateSingleUserAttributesAsync(string userId, bool blockExistentUsersOnly, DateTime? dateBefore, DateTime? dateAfter)
         {
 			HttpClientResult<User> userFetchResult = await _twilioClient.UserFetchAsync(userId).ConfigureAwait(false);
 
@@ -193,7 +194,7 @@ namespace TheGrandMigrator
             return result;
         }
 
-		private async Task<MigrationResult<IResource>> MigrateFetchedUserAsync(User user, bool blockExistentUsersOnly, DateTime? dateBefore, DateTime? dateAfter)
+		private async Task<IMigrationResult<IResource>> MigrateFetchedUserAsync(User user, bool blockExistentUsersOnly, DateTime? dateBefore, DateTime? dateAfter)
 		{
             Trace.WriteLine($"Migrating user {user.FriendlyName} with ID {user.Id} with {(blockExistentUsersOnly ? "only existent blockees":"all the blockees")} if any...");
 			MigrationResult<IResource> result = new MigrationResult<IResource>();
@@ -296,7 +297,7 @@ namespace TheGrandMigrator
 			return result;
 		}
 
-		private async Task<MigrationResult<IResource>> MigrateSingleUserChannelsAttributesAsync(string userId, int limit, int pageSize, DateTime? dateBefore, DateTime? dateAfter)
+		private async Task<IMigrationResult<IResource>> MigrateSingleUserChannelsAttributesAsync(string userId, int limit, int pageSize, DateTime? dateBefore, DateTime? dateAfter)
 		{
 			int? migrateNoMoreThan = null;
 			if (limit > 0) migrateNoMoreThan = limit;
@@ -392,7 +393,7 @@ namespace TheGrandMigrator
 			return result;
 		}
 
-		private async Task<MigrationResult<IResource>> MigrateChannelWithMetadataAsync(Channel channel, int[] channelMembersIds)
+		private async Task<IMigrationResult<IResource>> MigrateChannelWithMetadataAsync(Channel channel, int[] channelMembersIds)
 		{
 			Trace.WriteLine($"Migrating channel {channel.UniqueName}...");
 			var result = new MigrationResult<IResource>();
@@ -430,7 +431,7 @@ namespace TheGrandMigrator
 			return result;
 		}
 
-        private static void CopyMigrationResult(MigrationResult<IResource> from, /* mutable */ MigrationResult<IResource> to, string customMessage)
+        private static void CopyMigrationResult(IMigrationResult<IResource> from, /* mutable */ MigrationResult<IResource> to, string customMessage)
         {
 			if (from == null || to == null) throw new ArgumentNullException();
 
@@ -451,7 +452,7 @@ namespace TheGrandMigrator
             return reference <= before || reference >= after;
         }
 
-        private async Task<MigrationResult<IResource>> MigrateSingleChannelAttributesAsync(Channel channel, DateTime? dateBefore, DateTime? dateAfter)
+        private async Task<IMigrationResult<IResource>> MigrateSingleChannelAttributesAsync(Channel channel, DateTime? dateBefore, DateTime? dateAfter)
         {
 			var result = new MigrationResult<IResource>();
 
@@ -498,7 +499,7 @@ namespace TheGrandMigrator
 			HttpClientResult<int[]> absentMembersResult = await _sendbirdClient.WhoIsAbsentAsync(channelMembersIds);
 			if (absentMembersResult.IsSuccess && absentMembersResult.Payload.Length > 0)
 			{
-				MigrationResult<IResource> memberMigrationResult = null;
+				IMigrationResult<IResource> memberMigrationResult = null;
 				Trace.WriteLine($"Migrating the nonexistent members of the channel {channel.UniqueName}...");
 				foreach (int memberId in absentMembersResult.Payload)
 				{

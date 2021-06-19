@@ -8,9 +8,14 @@ namespace SandBirdMigrationAttributes.Logging
 {
     public static class LoggingUtilities
     {
-        private static readonly string SuccessLogFileName = $"{LogFolder}\\successfull_entities_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.log";
-        private static readonly string FailedLogFileName = $"{LogFolder}\\failed_entities_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.log";
-        private static readonly string SkippedLogFileName = $"{LogFolder}\\skipped_entities_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.log";
+        private static readonly string SuccessLogFileName = $"{LogFolder}/successfull_entities_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.log";
+        private static readonly string FailedLogFileName = $"{LogFolder}/failed_entities_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.log";
+        private static readonly string SkippedLogFileName = $"{LogFolder}/skipped_entities_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.log";
+        
+        private static readonly string DefaultMainlogFileName = $"{LogFolder}/Migration_log_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.txt";
+
+        private static bool _logToFile;
+        private static string _mainLogFileName;
 
         public const string LogFolder = "Logs";
 
@@ -19,7 +24,14 @@ namespace SandBirdMigrationAttributes.Logging
             Directory.CreateDirectory(LogFolder);
         }
 
-        public static void WriteMigrationResultLogFiles(IMigrationResult<IResource> result)
+        public static SetupLoggingToFiles(string logFileName = null)
+        {
+            _mainLogFileName = String.IsNullOrWhiteSpace(logFileName) ? DefaultMainlogFileName : logFileName;
+        }
+        
+        public static void Log(string logMessage, )
+
+        public static void WriteMigrationResultLogFiles(IRichMigrationResult<IResource> result)
         {
             if (result.SuccessCount > 0) File.AppendAllLines(SuccessLogFileName, result.EntitiesSucceeded.Select(e => e.ToString()).ToArray());
 
