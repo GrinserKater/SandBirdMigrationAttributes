@@ -4,10 +4,12 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Common.Results;
+using SandBirdMigrationAttributes.Logging.Enums;
 using SendbirdHttpClient.Abstractions;
 using SendbirdHttpClient.Models.Channel;
 using SendbirdHttpClient.Models.Common;
 using TheGrandMigrator.Enums;
+using TheGrandMigrator.Logging;
 using TheGrandMigrator.Models;
 using TwilioHttpClient.Abstractions;
 using TwilioHttpClient.Models;
@@ -77,7 +79,8 @@ namespace TheGrandMigrator.Utilities
 		{
 			if(String.IsNullOrWhiteSpace(message) || channel == null || result == null) return;
 
-			result.EntitiesFailed.Add(channel);
+			result.IncreaseChannelsFailed();
+			LoggingUtilities.LogEntityProcessingResultToFile(channel.UniqueName, EntityProcessingResult.Failure);
 			result.ErrorMessages.Add(message);
 			Debug.WriteLine(message);
 		}

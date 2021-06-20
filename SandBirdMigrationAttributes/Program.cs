@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Diagnostics;
-using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using TheGrandMigrator.Abstractions;
 using CommandManager;
 using CommandManager.Enums;
 using Common.Extensions;
-using SandBirdMigrationAttributes.Logging;
+using TheGrandMigrator.Logging;
 using TwilioHttpClient.Abstractions;
 
 namespace SandBirdMigrationAttributes
@@ -18,16 +17,13 @@ namespace SandBirdMigrationAttributes
 
         public static async Task Main(string[] args)
         {
-	        Trace.Listeners.Add(new TextWriterTraceListener(Console.Out));
-
 			var options = Manager.Manage(args);
             if (options.IsEmpty) return;
 
 			if (options.LogToFile)
 			{
-				Directory.CreateDirectory(LoggingUtilities.LogFolder);
 				_logFileName = String.Format(_logFileName, options.MigrationSubject.ToString("G"));
-				Trace.Listeners.Add(new TextWriterTraceListener(File.CreateText(_logFileName)));
+				LoggingUtilities.SetupLoggingToFiles(_logFileName);
 			}
 
 			try
@@ -36,7 +32,7 @@ namespace SandBirdMigrationAttributes
 
 				IMigrator grandMigrator = serviceProvider.GetRequiredService<IMigrator>();
 
-				Trace.WriteLine($"Starting migrations of {options.MigrationSubject:G} - {DateTime.Now.ToShortDateString()}.");
+				LoggingUtilities.Log($"Starting migrations of {options.MigrationSubject:G} - {DateTime.Now.ToShortDateString()}.");
 
 				var sw = new Stopwatch();
 				sw.Start();
@@ -55,29 +51,23 @@ namespace SandBirdMigrationAttributes
 						migrationResult = await grandMigrator.MigrateSingleAccountAttributesAsync(options.DateBefore, options.DateAfter, options.AccoutId, options.ResourceLimit, options.PageSize);
 						break;
 					default:
-						Trace.WriteLine($"Unsupported migration entity {options.MigrationSubject:G}.");
+						LoggingUtilities.Log($"Unsupported migration entity {options.MigrationSubject:G}.");
 						return;
 				}
 				sw.Stop();
+				
+				LoggingUtilities.Log($"Migration finished. Time elapsed: {sw.Elapsed.AsString()}. Results:");
+				LoggingUtilities.LogFinalStatistics(migrationResult);
+				
+				if (migrationResult.TotalFailedCount == 0 && migrationResult.TotalFetchedCount > 0) return;
 
-				LoggingUtilities.WriteMigrationResultLogFiles(migrationResult);
-				Trace.WriteLine($"Migration finished. Time elapsed: {sw.Elapsed.AsString()}. Results:");
-				Trace.WriteLine(
-					$"\tTotal fetched from Twilio: {migrationResult.FetchedCount}; migrated: {migrationResult.SuccessCount}; skipped: {migrationResult.SkippedCount}; failed {migrationResult.FailedCount}.");
-
-				if (migrationResult.FailedCount == 0 && migrationResult.FetchedCount > 0) return;
-
-                Trace.WriteLine("The following messages were recorded during the migration:");
-				Trace.WriteLine($"\t{migrationResult.Message}");
-				foreach (string message in migrationResult.ErrorMessages) Trace.WriteLine($"\t{message}");
+				LoggingUtilities.Log("The following messages were recorded during the migration:");
+				LoggingUtilities.Log($"\t{migrationResult.Message}");
+				foreach (string message in migrationResult.ErrorMessages) LoggingUtilities.Log($"\t{message}");
 			}
 			catch (Exception ex)
 			{
 				Trace.WriteLine($"Exception happened: {ex.Message}.");
-			}
-			finally
-			{
-				Trace.Flush();
 			}
         }
     }
