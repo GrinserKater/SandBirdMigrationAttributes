@@ -24,7 +24,7 @@ namespace TheGrandMigrator.Logging
 
         static LoggingUtilities()
         {
-            Directory.CreateDirectory(LogFolder);
+            Trace.Listeners.Add(new TextWriterTraceListener(Console.Out));
         }
 
         public static void SetupLoggingToFiles(string mainLogFileName = null)
