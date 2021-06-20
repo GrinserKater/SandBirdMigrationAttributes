@@ -187,8 +187,9 @@ namespace TheGrandMigrator
 				LoggingUtilities.LogEntityProcessingResultToFile(userId, EntityProcessingResult.Failure);
                 return result;
             }
-
-			User user = userFetchResult.Payload;
+            
+            User user = userFetchResult.Payload;
+            LoggingUtilities.Log($"Fetched the user {user.Id} - {user.FriendlyName}.");
 			result.IncreaseUsersFetched();
 
 			var userMigrationResult = await MigrateFetchedUserAsync(user, blockExistentUsersOnly, dateBefore, dateAfter);
@@ -198,7 +199,7 @@ namespace TheGrandMigrator
 
 		private async Task<IMigrationResult<IResource>> MigrateFetchedUserAsync(User user, bool blockExistentUsersOnly, DateTime? dateBefore, DateTime? dateAfter)
 		{
-            Trace.WriteLine($"Migrating user {user.FriendlyName} with ID {user.Id} with {(blockExistentUsersOnly ? "only existent blockees":"all the blockees")} if any...");
+			LoggingUtilities.Log($"Migrating user {user.FriendlyName} with ID {user.Id} with {(blockExistentUsersOnly ? "only existent blockees":"all the blockees")} if any...");
 			MigrationResult<IResource> result = new MigrationResult<IResource>();
 
             if(!IsIncludedByDate(user.DateUpdated, dateBefore, dateAfter))
@@ -273,7 +274,7 @@ namespace TheGrandMigrator
             var atLeastOneBlockeeFailed = false;
 			if (!blockExistentUsersOnly && nonExistentUsersResult.Payload.Length > 0)
             {
-                Trace.WriteLine($"\tOne or more of the blockees of the user {user.FriendlyName} do not exist on SB side. Creating...");
+	            LoggingUtilities.Log($"\tOne or more of the blockees of the user {user.FriendlyName} do not exist on SB side. Creating...");
 				IMigrationResult<IResource> blockeeMigrationResult = null;
                 foreach (int id in nonExistentUsersResult.Payload)
                 {
@@ -352,7 +353,7 @@ namespace TheGrandMigrator
 						HttpClientResult<int[]> absentMembersResult = await _sendbirdClient.WhoIsAbsentAsync(new[] { secondChannelMember });
 						if (absentMembersResult.IsSuccess && absentMembersResult.Payload.Length > 0)
 						{
-							Trace.WriteLine($"Migrating the nonexistent member with ID {secondChannelMember} of the channel {channel.UniqueName}...");
+							LoggingUtilities.Log($"Migrating the nonexistent member with ID {secondChannelMember} of the channel {channel.UniqueName}...");
 							// Channel's member will be migrated disregarding the age. 
 							var memberMigrationResult = await MigrateSingleUserAttributesAsync(secondChannelMember.ToString(), true, null, null);
 							if (memberMigrationResult.UsersFetchedCount == 0)
@@ -400,7 +401,7 @@ namespace TheGrandMigrator
 
 		private async Task<IMigrationResult<IResource>> MigrateChannelWithMetadataAsync(Channel channel, int[] channelMembersIds)
 		{
-			Trace.WriteLine($"Migrating channel {channel.UniqueName}...");
+			LoggingUtilities.Log($"Migrating channel {channel.UniqueName}...");
 			var result = new MigrationResult<IResource>();
 
 			OperationResult operationResult =
@@ -486,7 +487,7 @@ namespace TheGrandMigrator
 				// better not to add members to channel with single member at all rather then to re-add the removed one.
 				if (!channelMemberResult.IsSuccess)
 				{
-					Trace.WriteLine($"Failed to fetch members from Twilio for the channel {channel.UniqueName}. Reason: {channelMemberResult.FormattedMessage}.");
+					LoggingUtilities.Log($"Failed to fetch members from Twilio for the channel {channel.UniqueName}. Reason: {channelMemberResult.FormattedMessage}.");
 					channelMembersIds = Array.Empty<int>();
 				}
 				else channelMembersIds = channelMemberResult.Payload.Select(m => Int32.TryParse(m.Id, out int id) ? id : 0).ToArray();
@@ -499,13 +500,13 @@ namespace TheGrandMigrator
 			if (absentMembersResult.IsSuccess && absentMembersResult.Payload.Length > 0)
 			{
 				IMigrationResult<IResource> memberMigrationResult = null;
-				Trace.WriteLine($"Migrating the nonexistent members of the channel {channel.UniqueName}...");
+				LoggingUtilities.Log($"Migrating the nonexistent members of the channel {channel.UniqueName}...");
 				foreach (int memberId in absentMembersResult.Payload)
 				{
-					Trace.WriteLine($"\tMigrating the member with ID {memberId} of the channel {channel.UniqueName}...");
+					LoggingUtilities.Log($"\tMigrating the member with ID {memberId} of the channel {channel.UniqueName}...");
 					// We won't pay attention to the date of creation when migrating channel's members.
 					memberMigrationResult = await MigrateSingleUserAttributesAsync(memberId.ToString(), false, null, null);
-					Trace.WriteLine(memberMigrationResult.UsersFailedCount > 0
+					LoggingUtilities.Log(memberMigrationResult.UsersFailedCount > 0
 						? $"\tMigration of the member with ID {memberId} of the channel {channel.UniqueName} failed. Reason: {memberMigrationResult.Message}."
 						: $"\tMigration of the member with ID {memberId} of the channel {channel.UniqueName} succeeded.");
 				}

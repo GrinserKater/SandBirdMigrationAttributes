@@ -149,7 +149,7 @@ namespace TheGrandMigrator.Utilities
 				return OperationResult.Failure;
 			}
 
-			Trace.WriteLine($"\tChannel {channelUpsertRequest.ChannelUrl} already exists on SB side. Updating...");
+			LoggingUtilities.Log($"\tChannel {channelUpsertRequest.ChannelUrl} already exists on SB side. Updating...");
 
 			channelManipulationResult = await sendbirdClient.UpdateChannelAsync(channelUpsertRequest);
 

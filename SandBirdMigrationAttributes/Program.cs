@@ -67,7 +67,7 @@ namespace SandBirdMigrationAttributes
 			}
 			catch (Exception ex)
 			{
-				Trace.WriteLine($"Exception happened: {ex.Message}.");
+				LoggingUtilities.Log($"Exception happened: {ex.Message}.");
 			}
         }
     }
