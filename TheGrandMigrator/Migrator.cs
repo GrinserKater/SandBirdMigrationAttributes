@@ -16,6 +16,7 @@ using TheGrandMigrator.Models;
 using TheGrandMigrator.Utilities;
 using TwilioHttpClient.Abstractions;
 using TwilioHttpClient.Models;
+using TwilioHttpClient.Models.Attributes.User;
 using SendbirdUserResource = SendbirdHttpClient.Models.User.UserResource;
 
 namespace TheGrandMigrator
@@ -37,20 +38,71 @@ namespace TheGrandMigrator
 			if(limit > 0) migrateNoMoreThan = limit;
             int entitiesPerPage = pageSize == 0 ? Migration.DefaultPageSize : pageSize;
 
+            int tasksQuanity = 10;
+
             var result = new MigrationResult<IResource>();
             LoggingUtilities.Log("Fetching users from Twilio in a bulk mode. This might take a couple of minutes...");
 			try
 			{
 				IEnumerable<User> twilioUsersResult = _twilioClient.UserBulkRetrieve(entitiesPerPage, migrateNoMoreThan);
 
-				// TODO: filtering can be done here based on the dateBefore and dateAfter parameter.
-				// This will reduce the amount of iterations, but the logging must be adjusted appropriately. 
-				foreach (User user in twilioUsersResult)
+				List<Task<IMigrationResult<IResource>>> chunkMigrationTasks = new List<Task<IMigrationResult<IResource>>>(tasksQuanity);
+				User[] usersChunk = new User[pageSize];
+				int i = 0;
+				using (var twilioUserResultEnumerator = twilioUsersResult.GetEnumerator())
 				{
-					LoggingUtilities.Log($"Fetched the user {user.Id} - {user.FriendlyName}.");
-					result.IncreaseUsersFetched();
-					var userMigrationResult = await MigrateFetchedUserAsync(user, false, dateBefore, dateAfter);
-					result.Consume(userMigrationResult);
+					bool hasNext = twilioUserResultEnumerator.MoveNext();
+					while (hasNext)
+					{
+						var user = twilioUserResultEnumerator.Current;
+						if(user == null) continue;
+
+						LoggingUtilities.Log($"Fetched the user {user.Id} - {user.FriendlyName}.");
+						result.IncreaseUsersFetched();
+						var currentUserCopy = new User
+						{
+							Id = user.Id,
+							DateCreated = user.DateCreated,
+							DateUpdated = user.DateUpdated,
+							FriendlyName = user.FriendlyName,
+							ProfileImageUrl = user.ProfileImageUrl,
+							Attributes = new UserAttributes
+							{
+								BlockedByAdminAt = user.Attributes?.BlockedByAdminAt
+							}
+						};
+						if (user.Attributes?.BlockedUsers != null && user.Attributes.BlockedUsers.Length > 0)
+						{
+							currentUserCopy.Attributes.BlockedUsers = new int[user.Attributes.BlockedUsers.Length];
+							Array.Copy(user.Attributes.BlockedUsers, currentUserCopy.Attributes.BlockedUsers, 0);
+						}
+						usersChunk[i++] = currentUserCopy;
+
+						hasNext = twilioUserResultEnumerator.MoveNext();
+						
+						if (i == pageSize || !hasNext)
+						{
+							User[] chunkToProcess = new User[pageSize];
+							Array.Copy(usersChunk, chunkToProcess, usersChunk.Length);
+							chunkMigrationTasks.Add(Task.Run(async () =>
+							{
+								var chunkMigrationResult = await MigrateUsersChunkAsync(chunkToProcess, false, dateBefore, dateAfter);
+								Array.Clear(chunkToProcess, 0, chunkToProcess.Length);
+								return chunkMigrationResult;
+							}));
+							Array.Clear(usersChunk, 0, usersChunk.Length);
+							i = 0;
+						}
+					
+						if(chunkMigrationTasks.Count < tasksQuanity && hasNext) continue;
+
+						IMigrationResult<IResource>[] intermediateResults = await Task.WhenAll(chunkMigrationTasks);
+						foreach (var intermediateResult in intermediateResults)
+						{
+							result.Consume(intermediateResult);
+						}
+						chunkMigrationTasks.Clear();
+					}
 				}
 			}
 			catch (Exception ex)
@@ -304,6 +356,19 @@ namespace TheGrandMigrator
 			LoggingUtilities.Log(finalMessage);
 			result.IncreaseUsersSuccess();
 			LoggingUtilities.LogEntityProcessingResultToFile(user.Id, EntityProcessingResult.Success);
+			return result;
+		}
+
+		private async Task<IMigrationResult<IResource>> MigrateUsersChunkAsync(User[] users, bool blockExistentUsersOnly, DateTime? dateBefore, DateTime? dateAfter)
+		{
+			var result = new MigrationResult<IResource>();
+			foreach (User user in users)
+			{
+				if(user == null) continue;
+				var singleResult = await MigrateFetchedUserAsync(user, blockExistentUsersOnly, dateBefore, dateAfter);
+				result.Consume(singleResult);
+			}
+
 			return result;
 		}
 
