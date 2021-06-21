@@ -17,7 +17,7 @@ namespace CommandManager
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LimitArgument} | --{Constants.CommandLineParameters.AllArgument}]");
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LogToFileArgument}]");
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.BeforeArgument} <date> --{Constants.CommandLineParameters.AfterArgument}] <date>");
-			Trace.WriteLine(usageHint);
+			Console.WriteLine(usageHint);
         }
 
         public static ExecutionOptions Manage(string[] args)
