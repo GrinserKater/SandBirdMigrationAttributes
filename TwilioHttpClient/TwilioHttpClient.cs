@@ -25,7 +25,11 @@ namespace TwilioHttpClient
 {
 	public class TwilioHttpClient : ITwilioHttpClient
 	{
-		private const int DefaultPageSize = 50;
+		private const int DefaultPageSize = 100;
+		private const string BaseUrl = "https://chat.twilio.com/v2/Services";
+		private const string ChannelsEndpoint = "Channels";
+		private const string UsersEndpoint = "Users";
+		private const string PageSizeParameter = "PageSize";
 
 		private readonly string _chatServiceId;
 		private readonly TwilioRestClient _twilioRestClient;
@@ -93,6 +97,40 @@ namespace TwilioHttpClient
 				yield return user;
 			}
 		}
+		
+		public IEnumerable<User> UserPagedBulkRetrieve(int pageSize, int? limit = null)
+		{
+			int currentPageSize = pageSize > 0 ? pageSize : DefaultPageSize;
+			int currentLimit = limit ?? 0;
+			string firstPageUrl = $"{BaseUrl}/{_chatServiceId}/{UsersEndpoint}?{PageSizeParameter}={currentPageSize}";
+			
+			Page<UserResource> usersPage = UserResource.GetPage(firstPageUrl, _twilioRestClient);
+			int totalCount = 0;
+			while (true)
+			{
+				foreach (UserResource resource in usersPage.Records)
+				{
+					var user = new User
+					{
+						Id           = resource.Identity,
+						FriendlyName = resource.FriendlyName,
+						DateCreated  = resource.DateCreated,
+						DateUpdated  = resource.DateUpdated,
+						Attributes   = JsonSerializer.Deserialize<UserAttributes>(resource.Attributes, new JsonSerializerOptions
+						{
+							PropertyNameCaseInsensitive = true
+						})
+					};
+					yield return user;
+					
+					if (currentLimit > 0 && ++totalCount >= currentLimit) yield break;
+				}
+				
+				if (!usersPage.HasNextPage() || currentLimit > 0 && totalCount >= currentLimit) break;
+
+				usersPage = UserResource.NextPage(usersPage, _twilioRestClient);
+			}
+		}
 
 		public async IAsyncEnumerable<Channel> ChannelBulkRetrieveAsync(int pageSize, int? limit = null)
 		{
@@ -124,7 +162,7 @@ namespace TwilioHttpClient
 				yield return channel;
 			}
 		}
-		
+
 		public IEnumerable<Channel> ChannelBulkRetrieve(int pageSize, int? limit = null)
 		{
 			int currentPageSize = pageSize > 0 ? pageSize : DefaultPageSize;
@@ -153,6 +191,43 @@ namespace TwilioHttpClient
 					})
 				};
 				yield return channel;
+			}
+		}
+		
+		public IEnumerable<Channel> ChannelPagedBulkRetrieve(int pageSize, int? limit = null)
+		{
+			int currentPageSize = pageSize > 0 ? pageSize : DefaultPageSize;
+			int currentLimit = limit ?? 0;
+			string firstPageUrl = $"{BaseUrl}/{_chatServiceId}/{ChannelsEndpoint}?{PageSizeParameter}={currentPageSize}";
+
+			Page<ChannelResource> channelsPage = ChannelResource.GetPage(firstPageUrl, _twilioRestClient);
+			int totalCount = 0;
+			while(true)
+			{
+				foreach (var resource in channelsPage.Records)
+				{
+					var channel = new Channel
+					{
+						Sid = resource.Sid,
+						UniqueName = resource.UniqueName,
+						FriendlyName = resource.FriendlyName,
+						MembersCount = resource.MembersCount ?? 0,
+						DateCreated = resource.DateCreated,
+						DateUpdated = resource.DateUpdated,
+						Attributes = JsonSerializer.Deserialize<ChannelAttributes>(resource.Attributes,
+							new JsonSerializerOptions
+							{
+								PropertyNameCaseInsensitive = true
+							})
+					};
+					yield return channel;
+					
+					if (currentLimit > 0 && ++totalCount >= currentLimit) yield break;
+				}
+				
+				if (!channelsPage.HasNextPage() || currentLimit > 0 && totalCount >= currentLimit) break;
+				
+				channelsPage = ChannelResource.NextPage(channelsPage, _twilioRestClient);
 			}
 		}
 
@@ -267,7 +342,7 @@ namespace TwilioHttpClient
 			}
 		}
 
-        private HttpClientResult<T> ProcessException<T>(Exception ex, string methodName, params string[] extraInfo) where T : class
+		private HttpClientResult<T> ProcessException<T>(Exception ex, string methodName, params string[] extraInfo) where T : class
 		{
 			string loggedMessage = $"[{nameof(TwilioHttpClient)}.{methodName}]: {{0}}";
 

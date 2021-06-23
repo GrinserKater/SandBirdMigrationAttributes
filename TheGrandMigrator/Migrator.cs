@@ -41,10 +41,7 @@ namespace TheGrandMigrator
             LoggingUtilities.Log("Fetching users from Twilio in a bulk mode. This might take a couple of minutes...");
 			try
 			{
-				IEnumerable<User> twilioUsersResult = _twilioClient.UserBulkRetrieve(entitiesPerPage, migrateNoMoreThan);
-
-				// TODO: filtering can be done here based on the dateBefore and dateAfter parameter.
-				// This will reduce the amount of iterations, but the logging must be adjusted appropriately. 
+				IEnumerable<User> twilioUsersResult = _twilioClient.UserPagedBulkRetrieve(entitiesPerPage, migrateNoMoreThan);
 				foreach (User user in twilioUsersResult)
 				{
 					LoggingUtilities.Log($"Fetched the user {user.Id} - {user.FriendlyName}.");
@@ -76,10 +73,7 @@ namespace TheGrandMigrator
             LoggingUtilities.Log("Fetching channels from Twilio in a bulk mode. This might take a couple of minutes...");
             try
             {
-	            IEnumerable<Channel> twilioChannelResult = _twilioClient.ChannelBulkRetrieve(entitiesPerPage, migrateNoMoreThan);
-
-	            // TODO: filtering can be done here based on the dateBefore and dateAfter parameter, and on member count.
-	            // This will reduce the amount of iterations, but the logging must be adjusted appropriately. 
+	            IEnumerable<Channel> twilioChannelResult = _twilioClient.ChannelPagedBulkRetrieve(entitiesPerPage, migrateNoMoreThan);
 	            foreach (Channel channel in twilioChannelResult)
 	            {
 		            LoggingUtilities.Log($"Fetched the channel {channel.UniqueName}.");

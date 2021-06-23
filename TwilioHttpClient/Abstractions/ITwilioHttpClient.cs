@@ -9,8 +9,10 @@ namespace TwilioHttpClient.Abstractions
     {
 	    IAsyncEnumerable<User> UserBulkRetrieveAsync(int pageSize, int? limit = null);
 	    IEnumerable<User> UserBulkRetrieve(int pageSize, int? limit = null);
+	    IEnumerable<User> UserPagedBulkRetrieve(int pageSize, int? limit = null);
 	    IAsyncEnumerable<Channel> ChannelBulkRetrieveAsync(int pageSize, int? limit = null);
 	    IEnumerable<Channel> ChannelBulkRetrieve(int pageSize, int? limit = null);
+	    IEnumerable<Channel> ChannelPagedBulkRetrieve(int pageSize, int? limit = null);
         Task<HttpClientResult<User>> UserFetchAsync(string userId);
         Task<HttpClientResult<Member[]>> ChannelMembersBulkRetrieveAsync(string channelUniqueIdentifier);
         IAsyncEnumerable<UserChannel> UserChannelsBulkRetrieveAsync(string userId, int pageSize, int? limit = null);
