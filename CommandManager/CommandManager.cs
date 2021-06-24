@@ -13,10 +13,12 @@ namespace CommandManager
 			var usageHint = new StringBuilder("Usage: SandBirdMigrationAttributes ");
 			usageHint.AppendLine($"--{MigrationSubject.User:G} | --{MigrationSubject.Channel:G} | --{MigrationSubject.Account:G} <user ID>");
 			usageHint.AppendLine("Optional arguments:");
+			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.FromFileArgument} <file name>]");
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.PageSizeArgument}]");
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LimitArgument} | --{Constants.CommandLineParameters.AllArgument}]");
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.LogToFileArgument}]");
 			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.BeforeArgument} <date> --{Constants.CommandLineParameters.AfterArgument}] <date>");
+			usageHint.AppendLine($"\t[--{Constants.CommandLineParameters.ExperimentalArgument}]");
 			Console.WriteLine(usageHint);
         }
 
@@ -75,6 +77,13 @@ namespace CommandManager
 
 			if (arguments.Contains(Constants.CommandLineParameters.AllArgument)) resourceLimit = 0;
 
+			if (arguments.Contains(Constants.CommandLineParameters.FromFileArgument))
+			{
+				string fileName = ExtractNextPositionStringParameter(arguments, Constants.CommandLineParameters.FromFileArgument);
+				options.FileName = fileName.Contains('.') ? fileName : null;
+			}
+
+			options.UseExperimentalFeature = arguments.Contains(Constants.CommandLineParameters.ExperimentalArgument);
 			options.PageSize = pageSize;
 			options.ResourceLimit = resourceLimit;
 			options.LogToFile = !String.IsNullOrWhiteSpace(logToFile);

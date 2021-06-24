@@ -4,11 +4,11 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <Company>Scout24 Schweiz AG</Company>
-    <AssemblyVersion>0.9.4</AssemblyVersion>
-    <PackageVersion>0.9.4</PackageVersion>
+    <AssemblyVersion>0.9.5</AssemblyVersion>
+    <PackageVersion>0.9.5</PackageVersion>
     <Title>SandbirdMigrationAttributes</Title>
     <PackageReleaseNotes>New faster loggging.</PackageReleaseNotes>
-    <FileVersion>0.9.4</FileVersion>
+    <FileVersion>0.9.5</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>

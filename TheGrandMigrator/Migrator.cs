@@ -103,6 +103,90 @@ namespace TheGrandMigrator
 			return result;
 		}
 
+		public async Task<IMigrationResult<IResource>> MigrateChannelsAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, string fileName)
+		{
+			var result = new MigrationResult<IResource>();
+            LoggingUtilities.Log($"Reading channel identifiers from file {fileName}...");
+            try
+            {
+	            var channelUniqueIdentifiers = DataSourceUtilities.ReadAllFromFile(fileName, out int totalLines);
+	            LoggingUtilities.Log($"Read {totalLines} channel identifiers.");
+	            int migratedSoFar = 0;
+	            foreach (string channelUniqueIdentifier in channelUniqueIdentifiers)
+	            {
+		            IMigrationResult<IResource> singleChannelMigrationResult = await MigrateSingleChannelAttributesAsync(dateBefore, dateAfter, channelUniqueIdentifier);
+		            Trace.WriteLine($"Channels migrated so far: {++migratedSoFar}/{totalLines}");
+		            result.Consume(singleChannelMigrationResult);
+	            }
+            }
+            catch (Exception ex)
+            {
+	            result.Message = "Migration of channels' attributes failed. See ErrorMessages for details.";
+	            result.ErrorMessages.Add($"Message: [{ex.Message}].");
+	            Debug.WriteLine(result.ErrorMessages.Last());
+	            return result;
+            }
+            
+            result.Message = result.ChannelsFailedCount == 0 ?
+				$"Migration finished. Totally migrated {result.ChannelsSuccessCount} channels' attributes.":
+				$"Not all channels' attributes migrated successfully. {result.ChannelsFailedCount} failed, {result.ChannelsSuccessCount} succeeded. See ErrorMessages for details.";
+			return result;
+		}
+		
+		// Experimental method.
+		public async Task<IMigrationResult<IResource>> MigrateChannelsAttributesParallelAsync(DateTime? dateBefore, DateTime? dateAfter, string fileName)
+		{
+			var result = new MigrationResult<IResource>();
+            LoggingUtilities.Log("Reading unique identifiers from file...");
+            try
+            {
+	            List<Task<MigrationResult<IResource>>> tasks = new List<Task<MigrationResult<IResource>>>();
+	            foreach (IEnumerable<string> channelUniqueNames in DataSourceUtilities.ReadBatchFromFile(fileName, 10))
+	            {
+		            var list = channelUniqueNames.ToList();
+		            Task<MigrationResult<IResource>> task = Task.Run(async () =>
+		            {
+			            var localResult = new MigrationResult<IResource>();
+			            foreach (string channelUniqueName in list)
+			            {
+				            IMigrationResult<IResource> singleChannelMigrationResult = await MigrateSingleChannelAttributesAsync(dateBefore, dateAfter, channelUniqueName);
+				            localResult.Consume(singleChannelMigrationResult);
+			            }
+			            return localResult;
+		            });
+		            tasks.Add(task);
+	            }
+
+	            var cont = Task.WhenAll(tasks);
+	            try
+	            {
+		            cont.Wait();
+	            }
+	            catch (Exception e)
+	            {
+		            result.Message = e.Message;
+	            }
+
+	            await Task.Delay(200);
+	            foreach (var migrationResult in cont.Result)
+	            {
+		            result.Consume(migrationResult);
+	            }
+            }
+            catch (Exception ex)
+            {
+	            result.Message = "Migration of channels' attributes failed. See ErrorMessages for details.";
+	            result.ErrorMessages.Add($"Message: [{ex.Message}].");
+	            Debug.WriteLine(result.ErrorMessages.Last());
+	            return result;
+            }
+            
+            result.Message = result.ChannelsFailedCount == 0 ?
+				$"Migration finished. Totally migrated {result.ChannelsSuccessCount} channels' attributes.":
+				$"Not all channels' attributes migrated successfully. {result.ChannelsFailedCount} failed, {result.ChannelsSuccessCount} succeeded. See ErrorMessages for details.";
+			return result;
+		}
+
 		public async Task<IMigrationResult<IResource>> MigrateSingleAccountAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, int accountUserId, int limit, int pageSize)
         {
 			var result = new MigrationResult<IResource>();
@@ -140,9 +224,6 @@ namespace TheGrandMigrator
 
         public async Task<IMigrationResult<IResource>> MigrateSingleChannelAttributesAsync(DateTime? dateBefore, DateTime? dateAfter, string channelUniqueIdentifier)
         {
-	        LoggingUtilities.Log($"Fetching channel {channelUniqueIdentifier} from Twilio...");
-			HttpClientResult<Channel> twilioChannelResult = await _twilioClient.ChannelFetchAsync(channelUniqueIdentifier);
-
             var result = new MigrationResult<IResource>();
 
             if (String.IsNullOrWhiteSpace(channelUniqueIdentifier))
@@ -151,6 +232,9 @@ namespace TheGrandMigrator
                 result.ErrorMessages.Add($"{channelUniqueIdentifier} is invalid.");
                 return result;
             }
+            
+            LoggingUtilities.Log($"Fetching channel {channelUniqueIdentifier} from Twilio...");
+            HttpClientResult<Channel> twilioChannelResult = await _twilioClient.ChannelFetchAsync(channelUniqueIdentifier);
 
 			if (!twilioChannelResult.IsSuccess)
             {
