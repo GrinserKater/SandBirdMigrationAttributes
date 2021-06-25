@@ -44,7 +44,11 @@ namespace SandBirdMigrationAttributes
 						break;
 					case MigrationSubject.Channel:
 						migrationResult = String.IsNullOrWhiteSpace(options.ChannelUniqueIdentifier) ?
-							await grandMigrator.MigrateChannelsAttributesAsync(options.DateBefore, options.DateAfter, options.ResourceLimit, options.PageSize) :
+							String.IsNullOrWhiteSpace(options.FileName) ?
+								await grandMigrator.MigrateChannelsAttributesAsync(options.DateBefore, options.DateAfter, options.ResourceLimit, options.PageSize) :
+								options.UseExperimentalFeature ? 
+									await grandMigrator.MigrateChannelsAttributesParallelAsync(options.DateBefore, options.DateAfter, options.FileName) :
+									await grandMigrator.MigrateChannelsAttributesAsync(options.DateBefore, options.DateAfter, options.FileName) :
 							await grandMigrator.MigrateSingleChannelAttributesAsync(options.DateBefore, options.DateAfter, options.ChannelUniqueIdentifier);
                         break;
 					case MigrationSubject.Account:
