@@ -115,7 +115,7 @@ namespace TheGrandMigrator
 	            foreach (string channelUniqueIdentifier in channelUniqueIdentifiers)
 	            {
 		            IMigrationResult<IResource> singleChannelMigrationResult = await MigrateSingleChannelAttributesAsync(dateBefore, dateAfter, channelUniqueIdentifier);
-		            Trace.WriteLine($"Channels migrated so far: {++migratedSoFar}/{totalLines}");
+		            LoggingUtilities.WriteTraceLine($"Channels migrated so far: {++migratedSoFar}/{totalLines}");
 		            result.Consume(singleChannelMigrationResult);
 	            }
             }
@@ -562,7 +562,8 @@ namespace TheGrandMigrator
 				return result;
 			}
 
-			int[] channelMembersIds;
+			int[] actualChannelMembersIds;
+			int[] originalChannelMembersIds = channel.UniqueName.Split('-').Skip(1).Select(Int32.Parse).ToArray();
 			if (channel.MembersCount == 1)
 			{
 				// We could create a Fetch method to fetch a single member, but bulk retrieve is no difference.
@@ -572,15 +573,16 @@ namespace TheGrandMigrator
 				if (!channelMemberResult.IsSuccess)
 				{
 					LoggingUtilities.Log($"Failed to fetch members from Twilio for the channel {channel.UniqueName}. Reason: {channelMemberResult.FormattedMessage}.");
-					channelMembersIds = Array.Empty<int>();
+					actualChannelMembersIds = Array.Empty<int>();
 				}
-				else channelMembersIds = channelMemberResult.Payload.Select(m => Int32.TryParse(m.Id, out int id) ? id : 0).ToArray();
+				else actualChannelMembersIds = channelMemberResult.Payload.Select(m => Int32.TryParse(m.Id, out int id) ? id : 0).ToArray();
             }
-			else channelMembersIds = channel.UniqueName.Split('-').Skip(1).Select(Int32.Parse).ToArray();
+			else actualChannelMembersIds = originalChannelMembersIds;
 
-			// Checking if channel members exist as SB users. If not, we'll try to migrate them. If migration fails we'll still proceed.
+			// Checking if the original channel members exist as SB users. If not, we'll try to migrate them. If migration fails we'll still proceed.
 			// In this case channel will simply be created with the members that already exist.
-			HttpClientResult<int[]> absentMembersResult = await _sendbirdClient.WhoIsAbsentAsync(channelMembersIds);
+			// Based on the last experience, we will migrate both members' users, but still add only one (in case there is only one) as a member.
+			HttpClientResult<int[]> absentMembersResult = await _sendbirdClient.WhoIsAbsentAsync(originalChannelMembersIds);
 			if (absentMembersResult.IsSuccess && absentMembersResult.Payload.Length > 0)
 			{
 				IMigrationResult<IResource> memberMigrationResult = null;
@@ -596,8 +598,9 @@ namespace TheGrandMigrator
 				}
 				result.Consume(memberMigrationResult);
 			}
-
-			var channelMigrationResult = await MigrateChannelWithMetadataAsync(channel, channelMembersIds);
+			
+			// As mentioned, we will still add only actual members of the channel.
+			var channelMigrationResult = await MigrateChannelWithMetadataAsync(channel, actualChannelMembersIds);
 			result.Consume(channelMigrationResult);
 			return result;
 		}

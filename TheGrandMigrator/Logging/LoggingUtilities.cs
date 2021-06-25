@@ -47,6 +47,18 @@ namespace TheGrandMigrator.Logging
             LogEntityProcessingResultToFile(entityUniqueIdentifier, processingResult);
         }
         
+        public static void WriteTraceLine(string logMessage)
+        {
+            if (String.IsNullOrWhiteSpace(logMessage)) return;
+            Trace.WriteLine(logMessage);
+        }
+        
+        public static void WriteDebugLine(string logMessage)
+        {
+            if (String.IsNullOrWhiteSpace(logMessage)) return;
+            Debug.WriteLine(logMessage);
+        }
+        
         public static void LogEntityProcessingResultToFile(string entityUniqueIdentifier, EntityProcessingResult processingResult)
         {
             if (!_logToFile) return;
