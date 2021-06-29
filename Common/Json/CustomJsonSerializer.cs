@@ -15,6 +15,7 @@ namespace Common.Json
 			{
 				DefaultValueHandling = DefaultValueHandling.Populate,
 				NullValueHandling    = NullValueHandling.Ignore,
+				DateFormatHandling   = DateFormatHandling.IsoDateFormat,
 				ContractResolver     = new DefaultContractResolver { NamingStrategy = new CamelCaseNamingStrategy() },
 				Error                = (s, e) =>
 				{
@@ -37,6 +38,7 @@ namespace Common.Json
 			{
 				DefaultValueHandling = DefaultValueHandling.Populate,
 				NullValueHandling    = NullValueHandling.Ignore,
+				DateFormatHandling   = DateFormatHandling.IsoDateFormat,
 				ContractResolver     = new DefaultContractResolver { NamingStrategy = new CamelCaseNamingStrategy() },
 				Error                = (s, e) =>
 				{
