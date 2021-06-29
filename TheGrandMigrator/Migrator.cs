@@ -193,7 +193,7 @@ namespace TheGrandMigrator
             try
             {
 	            List<Task<MigrationResult<IResource>>> tasks = new List<Task<MigrationResult<IResource>>>();
-	            foreach (IEnumerable<string> channelUniqueNames in DataSourceUtilities.ReadBatchFromFile(fileName, 10))
+	            foreach (IEnumerable<string> channelUniqueNames in DataSourceUtilities.YieldBatchFromFile(fileName, 10))
 	            {
 		            var list = channelUniqueNames.ToList();
 		            Task<MigrationResult<IResource>> task = Task.Run(async () =>

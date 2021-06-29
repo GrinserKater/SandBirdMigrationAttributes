@@ -8,12 +8,13 @@ namespace TheGrandMigrator.Utilities
     public static class DataSourceUtilities
     {
         private const int DefaultBatchSize = 100;
+        private const int DefaultChunksCount = 5;
         
-        public static IEnumerable<IEnumerable<string>> ReadBatchFromFile(string fileName, int? batchSize = null)
+        public static IEnumerable<IEnumerable<string>> YieldBatchFromFile(string fileName, int? batchSize = null)
         {
             if (String.IsNullOrWhiteSpace(fileName)) yield break;
+            
             int currentBatchSize = batchSize ?? DefaultBatchSize;
-
             List<string> batch = new List<string>(currentBatchSize);
             foreach (string line in File.ReadLines(fileName))
             {
@@ -26,6 +27,14 @@ namespace TheGrandMigrator.Utilities
             }
 
             yield return batch;
+        }
+
+        public static List<List<string>> ReadBatchesFromFile(string fileName, int? chunksCount = null)
+        {
+            if (String.IsNullOrWhiteSpace(fileName)) return new List<List<string>>();
+
+            int currentChunksCount = chunksCount ?? DefaultChunksCount;
+            
         }
         
         public static IEnumerable<string> ReadFromFile(string fileName)
