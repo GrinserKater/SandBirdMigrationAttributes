@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "SandBirdMigrationAttributes": {
-      "commandName": "Project",
-      "commandLineArgs": "--channel --fromfile test_channel_list.txt --logtofile"
-    }
-  }
-}
